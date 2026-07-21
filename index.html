@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>标准综合查询器</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- 顶部：输入区 + 查询按钮 + 数据源配置 -->
+    <section class="card config-card">
+      <div class="config-layout">
+        <div class="input-section">
+          <label class="field-label">输入标准名或标准号（支持模糊查询）</label>
+          <input type="text" id="standardInput" class="text-input" placeholder="例如：GB/T 28435-2012" />
+        </div>
+
+        <div class="query-section">
+          <button id="btnQuery" class="btn btn-primary">查询</button>
+        </div>
+
+        <div class="datasource-section">
+          <div class="ds-grid">
+            <div class="ds-item">
+              <label class="field-label">CNAS附表</label>
+              <div class="file-picker">
+                <input type="text" id="cnasFileName" class="text-input readonly" readonly placeholder="未选择文件" />
+                <button id="btnCnasFile" class="btn btn-small">选择</button>
+              </div>
+            </div>
+            <div class="ds-item">
+              <label class="field-label">CMA附表</label>
+              <div class="file-picker">
+                <input type="text" id="cmaFileName" class="text-input readonly" readonly placeholder="未选择文件" />
+                <button id="btnCmaFile" class="btn btn-small">选择</button>
+              </div>
+            </div>
+            <div class="ds-item">
+              <label class="field-label">CMA能力项目库网址</label>
+              <input type="text" id="cmaUrl" class="text-input" value="https://cma.caqit.org.cn" />
+            </div>
+            <div class="ds-item">
+              <label class="field-label">全国标准信息平台网址</label>
+              <input type="text" id="samrUrl" class="text-input" value="https://std.samr.gov.cn" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 中部：标准有效性查询结果 -->
+    <section class="card validity-card">
+      <div class="card-header">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+        </svg>
+        <span class="card-title">标准有效性查询结果</span>
+        <span id="validitySpinner" class="spinner hidden"></span>
+      </div>
+      <div id="validityResult" class="result-text placeholder">请输入标准号后点击查询</div>
+    </section>
+
+    <!-- 底部：三栏结果面板 -->
+    <section class="panels">
+      <div class="card panel">
+        <div class="card-header">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/>
+          </svg>
+          <span class="card-title">CNAS附表查询结果</span>
+          <span id="cnasSpinner" class="spinner hidden"></span>
+        </div>
+        <div id="cnasResult" class="result-text placeholder">等待查询...</div>
+      </div>
+
+      <div class="card panel">
+        <div class="card-header">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+          </svg>
+          <span class="card-title">CMA附表查询结果</span>
+          <span id="cmaSpinner" class="spinner hidden"></span>
+        </div>
+        <div id="cmaResult" class="result-text placeholder">等待查询...</div>
+      </div>
+
+      <div class="card panel">
+        <div class="card-header">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <span class="card-title">CMA能力项目库查询结果</span>
+          <span id="cmaApiSpinner" class="spinner hidden"></span>
+        </div>
+        <div id="cmaApiResult" class="result-text placeholder">等待查询...</div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
