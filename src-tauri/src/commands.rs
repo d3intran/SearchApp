@@ -1,5 +1,5 @@
 use crate::services::{cma_api, local_matcher::MatchResult, samr_status, standard_parser};
-use crate::AppState;
+use crate::{config, updater, AppState};
 use tauri::{AppHandle, Manager, State};
 
 #[tauri::command]
@@ -62,4 +62,24 @@ pub fn load_cnas_file(path: String, state: State<'_, AppState>) -> Result<usize,
 pub fn load_cma_file(path: String, state: State<'_, AppState>) -> Result<usize, String> {
     let mut matcher = state.matcher.lock().unwrap();
     matcher.load_cma(&path)
+}
+
+#[tauri::command]
+pub fn get_config() -> config::AppConfig {
+    config::load()
+}
+
+#[tauri::command]
+pub fn save_config(cma_url: String, samr_url: String) -> Result<(), String> {
+    let cfg = config::AppConfig { cma_url, samr_url };
+    config::save(&cfg)
+}
+
+#[tauri::command]
+pub async fn check_update() -> String {
+    let outcome = updater::check_and_update().await;
+    if outcome.will_restart {
+        std::process::exit(0);
+    }
+    outcome.message
 }

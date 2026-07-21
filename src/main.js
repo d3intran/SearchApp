@@ -1,7 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const $ = (id) => document.getElementById(id);
+const appWindow = getCurrentWindow();
 
 const standardInput = $("standardInput");
 const btnQuery = $("btnQuery");
@@ -9,6 +11,9 @@ const validityResult = $("validityResult");
 const cnasResult = $("cnasResult");
 const cmaResult = $("cmaResult");
 const cmaApiResult = $("cmaApiResult");
+
+// In-memory config (loaded from persisted config.json on startup)
+let config = { cma_url: "", samr_url: "" };
 
 function setLoading(loading) {
   btnQuery.disabled = loading;
@@ -79,8 +84,8 @@ async function doQuery() {
   setLoading(true);
   resetResults();
 
-  const cmaUrl = $("cmaUrl").value.trim();
-  const samrUrl = $("samrUrl").value.trim();
+  const cmaUrl = config.cma_url;
+  const samrUrl = config.samr_url;
 
   const [validity, cnas, cma, cmaApi] = await Promise.allSettled([
     invoke("query_validity", { stdCode: input, samrUrl }),
@@ -136,3 +141,64 @@ $("btnCmaFile").addEventListener("click", async () => {
     alert(`解析CMA附表失败：${e}`);
   }
 });
+
+// ===== Window controls (custom title bar) =====
+$("btnMinimize").addEventListener("click", () => appWindow.minimize());
+$("btnMaximize").addEventListener("click", () => appWindow.toggleMaximize());
+$("btnClose").addEventListener("click", () => appWindow.close());
+
+// ===== Settings panel =====
+const settingsModal = $("settingsModal");
+const settingsStatus = $("settingsStatus");
+
+function openSettings() {
+  $("cmaUrl").value = config.cma_url;
+  $("samrUrl").value = config.samr_url;
+  settingsStatus.textContent = "";
+  settingsModal.classList.remove("hidden");
+}
+
+function closeSettings() {
+  settingsModal.classList.add("hidden");
+}
+
+$("btnSettings").addEventListener("click", openSettings);
+$("btnCloseSettings").addEventListener("click", closeSettings);
+settingsModal.addEventListener("click", (e) => {
+  if (e.target === settingsModal) closeSettings();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !settingsModal.classList.contains("hidden")) closeSettings();
+});
+
+$("btnSaveSettings").addEventListener("click", async () => {
+  const cmaUrl = $("cmaUrl").value.trim();
+  const samrUrl = $("samrUrl").value.trim();
+  try {
+    await invoke("save_config", { cmaUrl, samrUrl });
+    config.cma_url = cmaUrl;
+    config.samr_url = samrUrl;
+    settingsStatus.textContent = "已保存";
+  } catch (e) {
+    settingsStatus.textContent = `保存失败：${e}`;
+  }
+});
+
+$("btnCheckUpdate").addEventListener("click", async () => {
+  settingsStatus.textContent = "正在检查更新...";
+  try {
+    const msg = await invoke("check_update");
+    settingsStatus.textContent = msg;
+  } catch (e) {
+    settingsStatus.textContent = `检查更新失败：${e}`;
+  }
+});
+
+// ===== Startup: load persisted config =====
+(async () => {
+  try {
+    config = await invoke("get_config");
+  } catch (e) {
+    console.error("加载配置失败", e);
+  }
+})();

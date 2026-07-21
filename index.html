@@ -7,6 +7,28 @@
   <link rel="stylesheet" href="/src/styles.css" />
 </head>
 <body>
+  <!-- 自定义标题栏 -->
+  <header class="titlebar" data-tauri-drag-region>
+    <span class="titlebar-title" data-tauri-drag-region>标准综合查询器</span>
+    <div class="titlebar-actions">
+      <button id="btnSettings" class="titlebar-btn" title="设置">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <button id="btnMinimize" class="titlebar-btn" title="最小化">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+      </button>
+      <button id="btnMaximize" class="titlebar-btn" title="最大化">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="1"/></svg>
+      </button>
+      <button id="btnClose" class="titlebar-btn titlebar-btn-close" title="关闭">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+  </header>
+
   <div class="app">
     <!-- 顶部：输入区 + 查询按钮 + 数据源配置 -->
     <section class="card config-card">
@@ -35,14 +57,6 @@
                 <input type="text" id="cmaFileName" class="text-input readonly" readonly placeholder="未选择文件" />
                 <button id="btnCmaFile" class="btn btn-small">选择</button>
               </div>
-            </div>
-            <div class="ds-item">
-              <label class="field-label">CMA能力项目库网址</label>
-              <input type="text" id="cmaUrl" class="text-input" value="https://cma.caqit.org.cn" />
-            </div>
-            <div class="ds-item">
-              <label class="field-label">全国标准信息平台网址</label>
-              <input type="text" id="samrUrl" class="text-input" value="https://std.samr.gov.cn" />
             </div>
           </div>
         </div>
@@ -96,6 +110,33 @@
         <div id="cmaApiResult" class="result-text placeholder">等待查询...</div>
       </div>
     </section>
+  </div>
+
+  <!-- 设置弹窗 -->
+  <div id="settingsModal" class="modal-overlay hidden">
+    <div class="modal card">
+      <div class="modal-header">
+        <span class="card-title">设置</span>
+        <button id="btnCloseSettings" class="modal-close" title="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="ds-item">
+          <label class="field-label">CMA能力项目库网址</label>
+          <input type="text" id="cmaUrl" class="text-input" />
+        </div>
+        <div class="ds-item">
+          <label class="field-label">全国标准信息平台网址</label>
+          <input type="text" id="samrUrl" class="text-input" />
+        </div>
+        <div class="update-row">
+          <button id="btnCheckUpdate" class="btn btn-small">检查软件更新</button>
+          <span id="settingsStatus" class="settings-status"></span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnSaveSettings" class="btn btn-primary">保存</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/src/main.js"></script>
