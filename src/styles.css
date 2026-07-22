@@ -125,6 +125,83 @@ body {
   flex: 1;
 }
 
+/* Loaded appendix files */
+.loaded-files {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.loaded-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.loaded-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  padding-top: 3px;
+  width: 38px;
+}
+
+.file-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+  min-height: 24px;
+}
+
+.file-list-empty {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding-top: 3px;
+}
+
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 6px 3px 10px;
+  background: rgba(0, 103, 192, 0.08);
+  border: 1px solid rgba(0, 103, 192, 0.18);
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.file-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.file-chip-remove {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.file-chip-remove:hover {
+  background: #c42b1c;
+  color: white;
+}
+
 /* Buttons */
 .btn {
   padding: 8px 20px;

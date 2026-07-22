@@ -9,7 +9,22 @@ pub struct StandardEntry {
     pub name: String,
 }
 
+#[derive(Clone)]
+struct LoadedFile {
+    path: String,
+    name: String,
+    entries: Vec<StandardEntry>,
+}
+
+#[derive(serde::Serialize, Clone)]
+pub struct FileInfo {
+    pub name: String,
+    pub count: usize,
+}
+
 pub struct LocalFileMatcher {
+    cnas_files: Vec<LoadedFile>,
+    cma_files: Vec<LoadedFile>,
     cnas_index: HashMap<String, Vec<StandardEntry>>,
     cma_index: HashMap<String, Vec<StandardEntry>>,
 }
@@ -23,23 +38,53 @@ pub struct MatchResult {
 impl LocalFileMatcher {
     pub fn new() -> Self {
         Self {
+            cnas_files: Vec::new(),
+            cma_files: Vec::new(),
             cnas_index: HashMap::new(),
             cma_index: HashMap::new(),
         }
     }
 
-    pub fn load_cnas(&mut self, path: &str) -> Result<usize, String> {
-        let entries = parsers::parse_file(path)?;
-        let count = entries.len();
-        self.cnas_index = build_index(entries);
-        Ok(count)
+    pub fn add_cnas(&mut self, path: &str) -> Result<Vec<FileInfo>, String> {
+        parse_and_add(path, &mut self.cnas_files)?;
+        rebuild_index(&mut self.cnas_index, &self.cnas_files);
+        Ok(self.cnas_infos())
     }
 
-    pub fn load_cma(&mut self, path: &str) -> Result<usize, String> {
-        let entries = parsers::parse_file(path)?;
-        let count = entries.len();
-        self.cma_index = build_index(entries);
-        Ok(count)
+    pub fn add_cma(&mut self, path: &str) -> Result<Vec<FileInfo>, String> {
+        parse_and_add(path, &mut self.cma_files)?;
+        rebuild_index(&mut self.cma_index, &self.cma_files);
+        Ok(self.cma_infos())
+    }
+
+    pub fn remove_cnas(&mut self, index: usize) -> Vec<FileInfo> {
+        if index < self.cnas_files.len() {
+            self.cnas_files.remove(index);
+            rebuild_index(&mut self.cnas_index, &self.cnas_files);
+        }
+        self.cnas_infos()
+    }
+
+    pub fn remove_cma(&mut self, index: usize) -> Vec<FileInfo> {
+        if index < self.cma_files.len() {
+            self.cma_files.remove(index);
+            rebuild_index(&mut self.cma_index, &self.cma_files);
+        }
+        self.cma_infos()
+    }
+
+    pub fn cnas_infos(&self) -> Vec<FileInfo> {
+        self.cnas_files
+            .iter()
+            .map(|f| FileInfo { name: f.name.clone(), count: f.entries.len() })
+            .collect()
+    }
+
+    pub fn cma_infos(&self) -> Vec<FileInfo> {
+        self.cma_files
+            .iter()
+            .map(|f| FileInfo { name: f.name.clone(), count: f.entries.len() })
+            .collect()
     }
 
     pub fn is_in_local_files(&self, std_code: &str) -> bool {
@@ -56,16 +101,31 @@ impl LocalFileMatcher {
     }
 }
 
-fn build_index(entries: Vec<StandardEntry>) -> HashMap<String, Vec<StandardEntry>> {
-    let mut index: HashMap<String, Vec<StandardEntry>> = HashMap::new();
-    for entry in entries {
-        let key = standard_parser::normalize(&entry.code);
-        if key.is_empty() {
-            continue;
-        }
-        index.entry(key).or_default().push(entry);
+fn parse_and_add(path: &str, files: &mut Vec<LoadedFile>) -> Result<(), String> {
+    if files.iter().any(|f| f.path == path) {
+        return Ok(()); // already loaded, skip
     }
-    index
+    let entries = parsers::parse_file(path)?;
+    let name = std::path::Path::new(path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(path)
+        .to_string();
+    files.push(LoadedFile { path: path.to_string(), name, entries });
+    Ok(())
+}
+
+fn rebuild_index(index: &mut HashMap<String, Vec<StandardEntry>>, files: &[LoadedFile]) {
+    index.clear();
+    for file in files {
+        for entry in &file.entries {
+            let key = standard_parser::normalize(&entry.code);
+            if key.is_empty() {
+                continue;
+            }
+            index.entry(key).or_default().push(entry.clone());
+        }
+    }
 }
 
 fn query_index(

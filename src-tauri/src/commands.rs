@@ -1,4 +1,4 @@
-use crate::services::{cma_api, local_matcher::MatchResult, samr_status, standard_parser};
+use crate::services::{cma_api, local_matcher::{FileInfo, MatchResult}, samr_status, standard_parser};
 use crate::{config, updater, AppState};
 use tauri::{AppHandle, Manager, State};
 
@@ -53,15 +53,27 @@ pub fn query_cma_file(std_code: String, state: State<'_, AppState>) -> MatchResu
 }
 
 #[tauri::command]
-pub fn load_cnas_file(path: String, state: State<'_, AppState>) -> Result<usize, String> {
+pub fn load_cnas_file(path: String, state: State<'_, AppState>) -> Result<Vec<FileInfo>, String> {
     let mut matcher = state.matcher.lock().unwrap();
-    matcher.load_cnas(&path)
+    matcher.add_cnas(&path)
 }
 
 #[tauri::command]
-pub fn load_cma_file(path: String, state: State<'_, AppState>) -> Result<usize, String> {
+pub fn load_cma_file(path: String, state: State<'_, AppState>) -> Result<Vec<FileInfo>, String> {
     let mut matcher = state.matcher.lock().unwrap();
-    matcher.load_cma(&path)
+    matcher.add_cma(&path)
+}
+
+#[tauri::command]
+pub fn remove_cnas_file(index: usize, state: State<'_, AppState>) -> Vec<FileInfo> {
+    let mut matcher = state.matcher.lock().unwrap();
+    matcher.remove_cnas(index)
+}
+
+#[tauri::command]
+pub fn remove_cma_file(index: usize, state: State<'_, AppState>) -> Vec<FileInfo> {
+    let mut matcher = state.matcher.lock().unwrap();
+    matcher.remove_cma(index)
 }
 
 #[tauri::command]

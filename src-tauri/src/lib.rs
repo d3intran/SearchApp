@@ -1,6 +1,6 @@
 mod commands;
 mod config;
-mod parsers;
+pub mod parsers;
 mod services;
 mod updater;
 
@@ -25,6 +25,8 @@ pub fn run() {
             commands::query_cma_file,
             commands::load_cnas_file,
             commands::load_cma_file,
+            commands::remove_cnas_file,
+            commands::remove_cma_file,
             commands::get_config,
             commands::save_config,
             commands::check_update,

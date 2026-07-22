@@ -46,17 +46,21 @@
           <div class="ds-grid">
             <div class="ds-item">
               <label class="field-label">CNAS附表</label>
-              <div class="file-picker">
-                <input type="text" id="cnasFileName" class="text-input readonly" readonly placeholder="未选择文件" />
-                <button id="btnCnasFile" class="btn btn-small">选择</button>
-              </div>
+              <button id="btnCnasFile" class="btn btn-small">选择文件...</button>
             </div>
             <div class="ds-item">
               <label class="field-label">CMA附表</label>
-              <div class="file-picker">
-                <input type="text" id="cmaFileName" class="text-input readonly" readonly placeholder="未选择文件" />
-                <button id="btnCmaFile" class="btn btn-small">选择</button>
-              </div>
+              <button id="btnCmaFile" class="btn btn-small">选择文件...</button>
+            </div>
+          </div>
+          <div class="loaded-files">
+            <div class="loaded-group">
+              <span class="loaded-label">CNAS:</span>
+              <div id="cnasFileList" class="file-list"><span class="file-list-empty">未加载</span></div>
+            </div>
+            <div class="loaded-group">
+              <span class="loaded-label">CMA:</span>
+              <div id="cmaFileList" class="file-list"><span class="file-list-empty">未加载</span></div>
             </div>
           </div>
         </div>

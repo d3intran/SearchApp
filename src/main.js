@@ -114,33 +114,63 @@ standardInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") doQuery();
 });
 
-$("btnCnasFile").addEventListener("click", async () => {
-  const path = await open({
-    filters: [{ name: "附表文件", extensions: ["pdf", "xlsx", "xls"] }],
-  });
-  if (!path) return;
-  try {
-    const count = await invoke("load_cnas_file", { path });
-    $("cnasFileName").value = path.split(/[/\\]/).pop();
-    $("cnasFileName").title = `${path}（${count} 个标准）`;
-  } catch (e) {
-    alert(`解析CNAS附表失败：${e}`);
+// ===== Loaded appendix files (multi-file) =====
+function renderFileList(listEl, files, kind) {
+  listEl.textContent = "";
+  if (!files || files.length === 0) {
+    const empty = document.createElement("span");
+    empty.className = "file-list-empty";
+    empty.textContent = "未加载";
+    listEl.appendChild(empty);
+    return;
   }
-});
+  files.forEach((f, idx) => {
+    const chip = document.createElement("span");
+    chip.className = "file-chip";
+    chip.title = f.name;
 
-$("btnCmaFile").addEventListener("click", async () => {
-  const path = await open({
+    const label = document.createElement("span");
+    label.className = "file-chip-name";
+    label.textContent = `${f.name} (${f.count})`;
+
+    const rm = document.createElement("button");
+    rm.className = "file-chip-remove";
+    rm.textContent = "×";
+    rm.title = "移除";
+    rm.addEventListener("click", async () => {
+      const cmd = kind === "cnas" ? "remove_cnas_file" : "remove_cma_file";
+      const updated = await invoke(cmd, { index: idx });
+      renderFileList(listEl, updated, kind);
+    });
+
+    chip.appendChild(label);
+    chip.appendChild(rm);
+    listEl.appendChild(chip);
+  });
+}
+
+async function loadFiles(kind) {
+  const paths = await open({
+    multiple: true,
     filters: [{ name: "附表文件", extensions: ["pdf", "xlsx", "xls"] }],
   });
-  if (!path) return;
-  try {
-    const count = await invoke("load_cma_file", { path });
-    $("cmaFileName").value = path.split(/[/\\]/).pop();
-    $("cmaFileName").title = `${path}（${count} 个标准）`;
-  } catch (e) {
-    alert(`解析CMA附表失败：${e}`);
+  if (!paths) return;
+
+  const cmd = kind === "cnas" ? "load_cnas_file" : "load_cma_file";
+  const listEl = $(kind === "cnas" ? "cnasFileList" : "cmaFileList");
+  let latest = null;
+  for (const path of paths) {
+    try {
+      latest = await invoke(cmd, { path });
+    } catch (e) {
+      alert(`解析附表失败：${path}\n${e}`);
+    }
   }
-});
+  if (latest !== null) renderFileList(listEl, latest, kind);
+}
+
+$("btnCnasFile").addEventListener("click", () => loadFiles("cnas"));
+$("btnCmaFile").addEventListener("click", () => loadFiles("cma"));
 
 // ===== Window controls (custom title bar) =====
 $("btnMinimize").addEventListener("click", () => appWindow.minimize());
