@@ -299,8 +299,8 @@ pub fn parse(path: &str) -> Result<Vec<StandardEntry>, String> {
     let mut entries: Vec<StandardEntry> = Vec::new();
     let mut seen = std::collections::HashSet::new();
 
-    let pages: Vec<_> = file.pages().collect();
-    for page_res in pages {
+    for (page_idx, page_res) in file.pages().enumerate() {
+        let page_num = (page_idx + 1) as u32;
         let page = match page_res {
             Ok(p) => p,
             Err(_) => continue,
@@ -370,7 +370,7 @@ pub fn parse(path: &str) -> Result<Vec<StandardEntry>, String> {
                     if !seen.insert(norm) {
                         continue;
                     }
-                    entries.push(StandardEntry { code, name });
+                    entries.push(StandardEntry { code, name, page: Some(page_num) });
                 }
             }
         } else {
@@ -412,7 +412,7 @@ pub fn parse(path: &str) -> Result<Vec<StandardEntry>, String> {
                 if !seen.insert(norm) {
                     continue;
                 }
-                entries.push(StandardEntry { code, name });
+                entries.push(StandardEntry { code, name, page: Some(page_num) });
             }
         }
     }

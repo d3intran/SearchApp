@@ -11,6 +11,11 @@
   <header class="titlebar" data-tauri-drag-region>
     <span class="titlebar-title" data-tauri-drag-region>标准综合查询器</span>
     <div class="titlebar-actions">
+      <button id="btnBrowse" class="titlebar-btn" title="浏览已解析标准">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+      </button>
       <button id="btnSettings" class="titlebar-btn" title="设置">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
@@ -47,19 +52,11 @@
             <div class="ds-item">
               <label class="field-label">CNAS附表</label>
               <button id="btnCnasFile" class="btn btn-small">选择文件...</button>
+              <div id="cnasFileList" class="file-list"><span class="file-list-empty">未加载</span></div>
             </div>
             <div class="ds-item">
               <label class="field-label">CMA附表</label>
               <button id="btnCmaFile" class="btn btn-small">选择文件...</button>
-            </div>
-          </div>
-          <div class="loaded-files">
-            <div class="loaded-group">
-              <span class="loaded-label">CNAS:</span>
-              <div id="cnasFileList" class="file-list"><span class="file-list-empty">未加载</span></div>
-            </div>
-            <div class="loaded-group">
-              <span class="loaded-label">CMA:</span>
               <div id="cmaFileList" class="file-list"><span class="file-list-empty">未加载</span></div>
             </div>
           </div>
@@ -133,13 +130,27 @@
           <input type="text" id="samrUrl" class="text-input" />
         </div>
         <div class="update-row">
-          <button id="btnCheckUpdate" class="btn btn-small">检查软件更新</button>
           <span id="settingsStatus" class="settings-status"></span>
         </div>
       </div>
       <div class="modal-footer">
+        <button id="btnCheckUpdate" class="btn btn-primary">检查软件更新</button>
         <button id="btnSaveSettings" class="btn btn-primary">保存</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 浏览已解析标准弹窗 -->
+  <div id="browseModal" class="modal-overlay hidden">
+    <div class="modal card browse-modal">
+      <div class="modal-header">
+        <span class="card-title">已解析标准</span>
+        <button id="btnCloseBrowse" class="modal-close" title="关闭">×</button>
+      </div>
+      <div class="browse-search">
+        <input type="text" id="browseSearch" class="text-input" placeholder="搜索标准号或名称..." />
+      </div>
+      <div id="browseList" class="browse-list"></div>
     </div>
   </div>
 

@@ -45,7 +45,7 @@ pub fn parse(path: &str) -> Result<Vec<StandardEntry>, String> {
                     }
 
                     let name_part = text.replace(&cap[0], "").trim().to_string();
-                    entries.push(StandardEntry { code, name: name_part });
+                    entries.push(StandardEntry { code, name: name_part, page: None });
                 }
             }
         }

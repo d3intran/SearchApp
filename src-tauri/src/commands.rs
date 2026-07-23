@@ -1,4 +1,4 @@
-use crate::services::{cma_api, local_matcher::{FileInfo, MatchResult}, samr_status, standard_parser};
+use crate::services::{cma_api, local_matcher::{BrowseEntry, FileInfo, MatchResult}, samr_status, standard_parser};
 use crate::{config, updater, AppState};
 use tauri::{AppHandle, Manager, State};
 
@@ -94,4 +94,20 @@ pub async fn check_update() -> String {
         std::process::exit(0);
     }
     outcome.message
+}
+
+#[tauri::command]
+pub fn get_all_standards(state: State<'_, AppState>) -> Vec<BrowseEntry> {
+    let matcher = state.matcher.lock().unwrap();
+    matcher.get_all_entries()
+}
+
+#[tauri::command]
+pub fn open_pdf_at_page(path: String, page: u32) -> Result<(), String> {
+    let url = format!("file:///{}#page={}", path.replace('\\', "/"), page);
+    std::process::Command::new("cmd")
+        .args(["/c", "start", "", &url])
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }

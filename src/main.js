@@ -232,3 +232,143 @@ $("btnCheckUpdate").addEventListener("click", async () => {
     console.error("加载配置失败", e);
   }
 })();
+
+// ===== Browse parsed standards =====
+const browseModal = $("browseModal");
+const browseList = $("browseList");
+const browseSearch = $("browseSearch");
+let allStandards = [];
+
+function stdPrefix(code) {
+  const m = code.match(/^([A-Za-z]+[/]?[A-Za-z]*)/);
+  return m ? m[1].toUpperCase() : "其他";
+}
+
+function stdNumber(code) {
+  const m = code.match(/[A-Za-z]+[/]?[A-Za-z]*\s*([0-9]+(?:[.\-][0-9]+)*)/);
+  if (!m) return [0];
+  return m[1].split(/[.\-]/).map(Number);
+}
+
+function compareNumbers(a, b) {
+  const na = stdNumber(a.code);
+  const nb = stdNumber(b.code);
+  for (let i = 0; i < Math.max(na.length, nb.length); i++) {
+    const va = na[i] || 0;
+    const vb = nb[i] || 0;
+    if (va !== vb) return va - vb;
+  }
+  return 0;
+}
+
+function renderBrowseList(filter) {
+  browseList.textContent = "";
+  const q = (filter || "").toLowerCase();
+  const filtered = q
+    ? allStandards.filter(
+        (s) => s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
+      )
+    : allStandards;
+
+  if (filtered.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "browse-empty";
+    empty.textContent = q ? "无匹配结果" : "暂无已解析的标准，请先加载附表文件";
+    browseList.appendChild(empty);
+    return;
+  }
+
+  const groups = {};
+  for (const s of filtered) {
+    const prefix = stdPrefix(s.code);
+    if (!groups[prefix]) groups[prefix] = [];
+    groups[prefix].push(s);
+  }
+
+  const sortedPrefixes = Object.keys(groups).sort();
+  for (const prefix of sortedPrefixes) {
+    const items = groups[prefix].sort(compareNumbers);
+
+    const details = document.createElement("details");
+    details.className = "browse-group";
+    details.open = true;
+
+    const summary = document.createElement("summary");
+    summary.className = "browse-group-header";
+    summary.textContent = `${prefix} (${items.length})`;
+    details.appendChild(summary);
+
+    for (const item of items) {
+      const row = document.createElement("div");
+      row.className = "browse-item";
+      if (item.page && item.source_path.toLowerCase().endsWith(".pdf")) {
+        row.classList.add("browse-item-clickable");
+        row.title = `点击在浏览器中打开 PDF 第 ${item.page} 页`;
+        row.addEventListener("click", () => {
+          invoke("open_pdf_at_page", { path: item.source_path, page: item.page });
+        });
+      }
+
+      const codeSpan = document.createElement("span");
+      codeSpan.className = "browse-item-code";
+      codeSpan.textContent = item.code;
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "browse-item-name";
+      nameSpan.textContent = item.name;
+
+      const metaSpan = document.createElement("span");
+      metaSpan.className = "browse-item-meta";
+      const parts = [item.source_name];
+      if (item.page) parts.push(`第${item.page}页`);
+      parts.push(item.source_type === "cnas" ? "CNAS" : "CMA");
+      metaSpan.textContent = parts.join(" · ");
+
+      row.appendChild(codeSpan);
+      row.appendChild(nameSpan);
+      row.appendChild(metaSpan);
+      details.appendChild(row);
+    }
+
+    browseList.appendChild(details);
+  }
+}
+
+function openBrowse() {
+  browseModal.classList.remove("hidden");
+  browseSearch.value = "";
+  browseList.textContent = "";
+  const loading = document.createElement("div");
+  loading.className = "browse-empty";
+  loading.textContent = "加载中...";
+  browseList.appendChild(loading);
+
+  invoke("get_all_standards")
+    .then((entries) => {
+      allStandards = entries;
+      renderBrowseList("");
+    })
+    .catch((e) => {
+      browseList.textContent = "";
+      const err = document.createElement("div");
+      err.className = "browse-empty";
+      err.textContent = `加载失败：${e}`;
+      browseList.appendChild(err);
+    });
+}
+
+function closeBrowse() {
+  browseModal.classList.add("hidden");
+}
+
+$("btnBrowse").addEventListener("click", openBrowse);
+$("btnCloseBrowse").addEventListener("click", closeBrowse);
+browseModal.addEventListener("click", (e) => {
+  if (e.target === browseModal) closeBrowse();
+});
+browseSearch.addEventListener("input", () => {
+  renderBrowseList(browseSearch.value.trim());
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !browseModal.classList.contains("hidden")) closeBrowse();
+});

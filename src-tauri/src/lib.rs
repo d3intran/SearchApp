@@ -30,6 +30,8 @@ pub fn run() {
             commands::get_config,
             commands::save_config,
             commands::check_update,
+            commands::get_all_standards,
+            commands::open_pdf_at_page,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

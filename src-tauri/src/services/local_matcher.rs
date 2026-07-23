@@ -7,6 +7,17 @@ use crate::parsers;
 pub struct StandardEntry {
     pub code: String,
     pub name: String,
+    pub page: Option<u32>,
+}
+
+#[derive(serde::Serialize, Clone)]
+pub struct BrowseEntry {
+    pub code: String,
+    pub name: String,
+    pub page: Option<u32>,
+    pub source_name: String,
+    pub source_path: String,
+    pub source_type: String,
 }
 
 #[derive(Clone)]
@@ -98,6 +109,35 @@ impl LocalFileMatcher {
 
     pub fn query_cma(&self, std_code: &str) -> MatchResult {
         query_index(&self.cma_index, std_code, "CMA附表")
+    }
+
+    pub fn get_all_entries(&self) -> Vec<BrowseEntry> {
+        let mut result = Vec::new();
+        for file in &self.cnas_files {
+            for entry in &file.entries {
+                result.push(BrowseEntry {
+                    code: entry.code.clone(),
+                    name: entry.name.clone(),
+                    page: entry.page,
+                    source_name: file.name.clone(),
+                    source_path: file.path.clone(),
+                    source_type: "cnas".into(),
+                });
+            }
+        }
+        for file in &self.cma_files {
+            for entry in &file.entries {
+                result.push(BrowseEntry {
+                    code: entry.code.clone(),
+                    name: entry.name.clone(),
+                    page: entry.page,
+                    source_name: file.name.clone(),
+                    source_path: file.path.clone(),
+                    source_type: "cma".into(),
+                });
+            }
+        }
+        result
     }
 }
 
