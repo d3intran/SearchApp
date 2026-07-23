@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 
 const $ = (id) => document.getElementById(id);
 const appWindow = getCurrentWindow();
@@ -185,6 +186,11 @@ function openSettings() {
   $("cmaUrl").value = config.cma_url;
   $("samrUrl").value = config.samr_url;
   settingsStatus.textContent = "";
+  $("updateProgress").classList.add("hidden");
+  const btnCheck = $("btnCheckUpdate");
+  btnCheck.textContent = "检查软件更新";
+  btnCheck.disabled = false;
+  btnCheck.dataset.state = "check";
   settingsModal.classList.remove("hidden");
 }
 
@@ -215,12 +221,54 @@ $("btnSaveSettings").addEventListener("click", async () => {
 });
 
 $("btnCheckUpdate").addEventListener("click", async () => {
-  settingsStatus.textContent = "正在检查更新...";
+  const btn = $("btnCheckUpdate");
+
+  if (btn.dataset.state === "restart") {
+    invoke("apply_update");
+    return;
+  }
+
+  const status = settingsStatus;
+  const progress = $("updateProgress");
+  const fill = $("progressFill");
+  const text = $("progressText");
+
+  status.textContent = "正在检查更新...";
+  progress.classList.add("hidden");
+  btn.disabled = true;
+
   try {
-    const msg = await invoke("check_update");
-    settingsStatus.textContent = msg;
+    const info = await invoke("check_update");
+    if (!info.has_update) {
+      status.textContent = info.message;
+      btn.disabled = false;
+      return;
+    }
+
+    status.textContent = info.message + "，正在下载...";
+    progress.classList.remove("hidden");
+    fill.style.width = "0%";
+    text.textContent = "0%";
+
+    const unlisten = await listen("update-progress", (event) => {
+      const p = event.payload;
+      const pct = Math.round(p.percent);
+      fill.style.width = pct + "%";
+      text.textContent = pct + "%";
+    });
+
+    await invoke("download_update", { url: info.url });
+    unlisten();
+
+    progress.classList.add("hidden");
+    status.textContent = `v${info.version} 下载完成`;
+    btn.textContent = "重启使用新版本";
+    btn.dataset.state = "restart";
+    btn.disabled = false;
   } catch (e) {
-    settingsStatus.textContent = `检查更新失败：${e}`;
+    progress.classList.add("hidden");
+    status.textContent = `更新失败：${e}`;
+    btn.disabled = false;
   }
 });
 

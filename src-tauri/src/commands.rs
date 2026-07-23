@@ -88,12 +88,18 @@ pub fn save_config(cma_url: String, samr_url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn check_update() -> String {
-    let outcome = updater::check_and_update().await;
-    if outcome.will_restart {
-        std::process::exit(0);
-    }
-    outcome.message
+pub async fn check_update() -> updater::UpdateInfo {
+    updater::check().await
+}
+
+#[tauri::command]
+pub async fn download_update(app: AppHandle, url: String) -> Result<(), String> {
+    updater::download(&app, &url).await
+}
+
+#[tauri::command]
+pub fn apply_update() {
+    updater::apply();
 }
 
 #[tauri::command]

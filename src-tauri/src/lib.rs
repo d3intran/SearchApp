@@ -30,6 +30,8 @@ pub fn run() {
             commands::get_config,
             commands::save_config,
             commands::check_update,
+            commands::download_update,
+            commands::apply_update,
             commands::get_all_standards,
             commands::open_pdf_at_page,
         ])
