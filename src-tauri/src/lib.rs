@@ -27,6 +27,7 @@ pub fn run() {
             commands::load_cma_file,
             commands::remove_cnas_file,
             commands::remove_cma_file,
+            commands::restore_state,
             commands::get_config,
             commands::save_config,
             commands::check_update,

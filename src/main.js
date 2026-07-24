@@ -272,12 +272,19 @@ $("btnCheckUpdate").addEventListener("click", async () => {
   }
 });
 
-// ===== Startup: load persisted config =====
+// ===== Startup: load persisted config + restore file state =====
 (async () => {
   try {
     config = await invoke("get_config");
   } catch (e) {
     console.error("加载配置失败", e);
+  }
+  try {
+    const [cnasFiles, cmaFiles] = await invoke("restore_state");
+    renderFileList($("cnasFileList"), cnasFiles, "cnas");
+    renderFileList($("cmaFileList"), cmaFiles, "cma");
+  } catch (e) {
+    console.error("恢复状态失败", e);
   }
 })();
 
@@ -368,7 +375,15 @@ function renderBrowseList(filter) {
       const metaSpan = document.createElement("span");
       metaSpan.className = "browse-item-meta";
       const parts = [item.source_name];
-      if (item.page) parts.push(`第${item.page}页`);
+      if (item.page) {
+        const isPdf = item.source_path.toLowerCase().endsWith(".pdf");
+        if (isPdf) {
+          parts.push(`第${item.page}页`);
+        } else {
+          const loc = item.sheet ? `${item.sheet}-第${item.page}行` : `第${item.page}行`;
+          parts.push(loc);
+        }
+      }
       parts.push(item.source_type === "cnas" ? "CNAS" : "CMA");
       metaSpan.textContent = parts.join(" · ");
 

@@ -8,6 +8,7 @@ pub struct StandardEntry {
     pub code: String,
     pub name: String,
     pub page: Option<u32>,
+    pub sheet: String,
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -15,6 +16,7 @@ pub struct BrowseEntry {
     pub code: String,
     pub name: String,
     pub page: Option<u32>,
+    pub sheet: String,
     pub source_name: String,
     pub source_path: String,
     pub source_type: String,
@@ -59,12 +61,14 @@ impl LocalFileMatcher {
     pub fn add_cnas(&mut self, path: &str) -> Result<Vec<FileInfo>, String> {
         parse_and_add(path, &mut self.cnas_files)?;
         rebuild_index(&mut self.cnas_index, &self.cnas_files);
+        self.save_state();
         Ok(self.cnas_infos())
     }
 
     pub fn add_cma(&mut self, path: &str) -> Result<Vec<FileInfo>, String> {
         parse_and_add(path, &mut self.cma_files)?;
         rebuild_index(&mut self.cma_index, &self.cma_files);
+        self.save_state();
         Ok(self.cma_infos())
     }
 
@@ -72,6 +76,7 @@ impl LocalFileMatcher {
         if index < self.cnas_files.len() {
             self.cnas_files.remove(index);
             rebuild_index(&mut self.cnas_index, &self.cnas_files);
+            self.save_state();
         }
         self.cnas_infos()
     }
@@ -80,8 +85,32 @@ impl LocalFileMatcher {
         if index < self.cma_files.len() {
             self.cma_files.remove(index);
             rebuild_index(&mut self.cma_index, &self.cma_files);
+            self.save_state();
         }
         self.cma_infos()
+    }
+
+    pub fn restore_state(&mut self) {
+        let paths = match load_state() {
+            Some(s) => s,
+            None => return,
+        };
+        for path in &paths.cnas_files {
+            let _ = parse_and_add(path, &mut self.cnas_files);
+        }
+        for path in &paths.cma_files {
+            let _ = parse_and_add(path, &mut self.cma_files);
+        }
+        rebuild_index(&mut self.cnas_index, &self.cnas_files);
+        rebuild_index(&mut self.cma_index, &self.cma_files);
+    }
+
+    fn save_state(&self) {
+        let state = SavedState {
+            cnas_files: self.cnas_files.iter().map(|f| f.path.clone()).collect(),
+            cma_files: self.cma_files.iter().map(|f| f.path.clone()).collect(),
+        };
+        let _ = save_state(&state);
     }
 
     pub fn cnas_infos(&self) -> Vec<FileInfo> {
@@ -119,6 +148,7 @@ impl LocalFileMatcher {
                     code: entry.code.clone(),
                     name: entry.name.clone(),
                     page: entry.page,
+                    sheet: entry.sheet.clone(),
                     source_name: file.name.clone(),
                     source_path: file.path.clone(),
                     source_type: "cnas".into(),
@@ -131,6 +161,7 @@ impl LocalFileMatcher {
                     code: entry.code.clone(),
                     name: entry.name.clone(),
                     page: entry.page,
+                    sheet: entry.sheet.clone(),
                     source_name: file.name.clone(),
                     source_path: file.path.clone(),
                     source_type: "cma".into(),
@@ -217,4 +248,28 @@ fn query_index(
         status: "nomatch".into(),
         message: "无匹配".into(),
     }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct SavedState {
+    cnas_files: Vec<String>,
+    cma_files: Vec<String>,
+}
+
+fn state_path() -> Option<std::path::PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?;
+    Some(dir.join("state.json"))
+}
+
+fn save_state(state: &SavedState) -> Result<(), String> {
+    let path = state_path().ok_or("无法确定状态文件路径")?;
+    let json = serde_json::to_string_pretty(state).map_err(|e| e.to_string())?;
+    std::fs::write(path, json).map_err(|e| e.to_string())
+}
+
+fn load_state() -> Option<SavedState> {
+    state_path()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .and_then(|s| serde_json::from_str(&s).ok())
 }

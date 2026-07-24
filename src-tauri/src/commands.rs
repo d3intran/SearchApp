@@ -77,6 +77,13 @@ pub fn remove_cma_file(index: usize, state: State<'_, AppState>) -> Vec<FileInfo
 }
 
 #[tauri::command]
+pub fn restore_state(state: State<'_, AppState>) -> (Vec<FileInfo>, Vec<FileInfo>) {
+    let mut matcher = state.matcher.lock().unwrap();
+    matcher.restore_state();
+    (matcher.cnas_infos(), matcher.cma_infos())
+}
+
+#[tauri::command]
 pub fn get_config() -> config::AppConfig {
     config::load()
 }

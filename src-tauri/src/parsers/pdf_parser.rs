@@ -370,7 +370,7 @@ pub fn parse(path: &str) -> Result<Vec<StandardEntry>, String> {
                     if !seen.insert(norm) {
                         continue;
                     }
-                    entries.push(StandardEntry { code, name, page: Some(page_num) });
+                    entries.push(StandardEntry { code, name, page: Some(page_num), sheet: String::new() });
                 }
             }
         } else {
@@ -412,7 +412,7 @@ pub fn parse(path: &str) -> Result<Vec<StandardEntry>, String> {
                 if !seen.insert(norm) {
                     continue;
                 }
-                entries.push(StandardEntry { code, name, page: Some(page_num) });
+                entries.push(StandardEntry { code, name, page: Some(page_num), sheet: String::new() });
             }
         }
     }
