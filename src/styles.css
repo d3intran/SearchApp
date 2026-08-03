@@ -188,6 +188,33 @@ body {
   color: white;
 }
 
+/* Batch query section */
+.batch-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.batch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.batch-row .file-list {
+  flex: 0 1 auto;
+}
+
+.batch-status-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Buttons */
 .btn {
   padding: 8px 20px;
@@ -251,6 +278,22 @@ body {
 .card-title {
   font-size: 13px;
   font-weight: 600;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.icon-btn:hover {
+  background: var(--hover-bg, rgba(0,0,0,.06));
+  color: var(--accent, #0067c0);
 }
 
 .result-text {

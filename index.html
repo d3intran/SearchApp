@@ -62,6 +62,22 @@
           </div>
         </div>
       </div>
+
+      <!-- 批量查询区 -->
+      <div class="batch-section">
+        <label class="field-label">批量查询</label>
+        <div class="batch-row">
+          <button id="btnBatchFile" class="btn btn-small">选择批量文件...</button>
+          <button id="btnBatchQuery" class="btn btn-primary" disabled>批量查询</button>
+          <button id="btnBatchView" class="btn btn-small" disabled>查看已解析标准</button>
+          <div id="batchFileList" class="file-list"><span class="file-list-empty">未加载</span></div>
+        </div>
+        <div id="batchProgress" class="update-progress hidden">
+          <div class="progress-bar"><div id="batchProgressFill" class="progress-fill"></div></div>
+          <span id="batchProgressText" class="progress-text">0%</span>
+          <span id="batchStatusText" class="batch-status-text"></span>
+        </div>
+      </div>
     </section>
 
     <!-- 中部：标准有效性查询结果 -->
@@ -72,6 +88,11 @@
         </svg>
         <span class="card-title">标准有效性查询结果</span>
         <span id="validitySpinner" class="spinner hidden"></span>
+        <button id="btnOpenSamr" class="icon-btn hidden" title="在浏览器中打开国标平台查询">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </button>
       </div>
       <div id="validityResult" class="result-text placeholder">请输入标准号后点击查询</div>
     </section>
@@ -155,6 +176,20 @@
         <input type="text" id="browseSearch" class="text-input" placeholder="搜索标准号或名称..." />
       </div>
       <div id="browseList" class="browse-list"></div>
+    </div>
+  </div>
+
+  <!-- 批量输入已解析标准弹窗 -->
+  <div id="batchModal" class="modal-overlay hidden">
+    <div class="modal card browse-modal">
+      <div class="modal-header">
+        <span class="card-title">批量查询 · 已解析标准</span>
+        <button id="btnCloseBatch" class="modal-close" title="关闭">×</button>
+      </div>
+      <div class="browse-search">
+        <input type="text" id="batchSearch" class="text-input" placeholder="搜索标准号或名称..." />
+      </div>
+      <div id="batchList" class="browse-list"></div>
     </div>
   </div>
 

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 
@@ -84,6 +84,7 @@ async function doQuery() {
 
   setLoading(true);
   resetResults();
+  $("btnOpenSamr").classList.remove("hidden");
 
   const cmaUrl = config.cma_url;
   const samrUrl = config.samr_url;
@@ -205,6 +206,13 @@ settingsModal.addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !settingsModal.classList.contains("hidden")) closeSettings();
+});
+
+$("btnOpenSamr").addEventListener("click", () => {
+  const code = standardInput.value.trim().replace(/\s+/g, "");
+  if (!code) return;
+  const url = `https://std.samr.gov.cn/search/std?q=${encodeURIComponent(code)}`;
+  invoke("open_url", { url });
 });
 
 $("btnSaveSettings").addEventListener("click", async () => {
@@ -434,4 +442,175 @@ browseSearch.addEventListener("input", () => {
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !browseModal.classList.contains("hidden")) closeBrowse();
+});
+
+// ===== Batch query =====
+let batchInputs = [];
+let batchFileName = "";
+const batchModal = $("batchModal");
+
+function renderBatchFile() {
+  const listEl = $("batchFileList");
+  listEl.textContent = "";
+  if (!batchFileName || batchInputs.length === 0) {
+    const empty = document.createElement("span");
+    empty.className = "file-list-empty";
+    empty.textContent = "未加载";
+    listEl.appendChild(empty);
+    $("btnBatchView").disabled = true;
+    $("btnBatchQuery").disabled = true;
+    return;
+  }
+  const chip = document.createElement("span");
+  chip.className = "file-chip";
+  chip.title = batchFileName;
+
+  const label = document.createElement("span");
+  label.className = "file-chip-name";
+  label.textContent = `${batchFileName} (${batchInputs.length})`;
+
+  const rm = document.createElement("button");
+  rm.className = "file-chip-remove";
+  rm.textContent = "×";
+  rm.title = "移除";
+  rm.addEventListener("click", async () => {
+    await invoke("clear_batch_inputs");
+    batchInputs = [];
+    batchFileName = "";
+    renderBatchFile();
+  });
+
+  chip.appendChild(label);
+  chip.appendChild(rm);
+  listEl.appendChild(chip);
+  $("btnBatchView").disabled = false;
+  $("btnBatchQuery").disabled = false;
+}
+
+async function loadBatchFile() {
+  const path = await open({
+    multiple: false,
+    filters: [{ name: "Excel", extensions: ["xlsx", "xls"] }],
+  });
+  if (!path) return;
+  try {
+    batchInputs = await invoke("parse_batch_file", { path });
+    batchFileName = path.split(/[\\/]/).pop();
+    renderBatchFile();
+  } catch (e) {
+    alert(`解析批量文件失败：${e}`);
+  }
+}
+
+function renderBatchList(filter) {
+  const listEl = $("batchList");
+  listEl.textContent = "";
+  const q = (filter || "").toLowerCase();
+  const filtered = q
+    ? batchInputs.filter(
+        (s) => s.code.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)
+      )
+    : batchInputs;
+
+  if (filtered.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "browse-empty";
+    empty.textContent = q ? "无匹配结果" : "暂无已解析的标准";
+    listEl.appendChild(empty);
+    return;
+  }
+
+  for (const item of filtered) {
+    const row = document.createElement("div");
+    row.className = "browse-item";
+
+    const codeSpan = document.createElement("span");
+    codeSpan.className = "browse-item-code";
+    codeSpan.textContent = item.code;
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "browse-item-name";
+    nameSpan.textContent = item.name;
+
+    row.appendChild(codeSpan);
+    row.appendChild(nameSpan);
+    listEl.appendChild(row);
+  }
+}
+
+function openBatchModal() {
+  batchModal.classList.remove("hidden");
+  $("batchSearch").value = "";
+  renderBatchList("");
+}
+
+function closeBatchModal() {
+  batchModal.classList.add("hidden");
+}
+
+async function runBatch() {
+  if (batchInputs.length === 0) return;
+
+  const progress = $("batchProgress");
+  const fill = $("batchProgressFill");
+  const text = $("batchProgressText");
+  const status = $("batchStatusText");
+  progress.classList.remove("hidden");
+  fill.style.width = "0%";
+  text.textContent = "0%";
+  status.textContent = "准备中...";
+  $("btnBatchQuery").disabled = true;
+  $("btnBatchFile").disabled = true;
+
+  const unlisten = await listen("batch-progress", (event) => {
+    const p = event.payload;
+    const pct = Math.round(p.percent);
+    fill.style.width = pct + "%";
+    text.textContent = pct + "%";
+    status.textContent = p.done
+      ? "查询完成"
+      : `(${p.current + 1}/${p.total}) ${p.code}`;
+  });
+
+  try {
+    await invoke("run_batch_query", {
+      samrUrl: config.samr_url,
+      cmaUrl: config.cma_url,
+    });
+    unlisten();
+    fill.style.width = "100%";
+    text.textContent = "100%";
+    status.textContent = "查询完成，请选择保存位置...";
+
+    const outPath = await save({
+      defaultPath: "批量查询结果.xlsx",
+      filters: [{ name: "Excel", extensions: ["xlsx"] }],
+    });
+    if (!outPath) {
+      status.textContent = "查询完成，未保存结果";
+      return;
+    }
+    await invoke("save_batch_result", { outputPath: outPath });
+    status.textContent = `已保存：${outPath}`;
+  } catch (e) {
+    unlisten();
+    status.textContent = `批量查询失败：${e}`;
+  } finally {
+    $("btnBatchQuery").disabled = false;
+    $("btnBatchFile").disabled = false;
+  }
+}
+
+$("btnBatchFile").addEventListener("click", loadBatchFile);
+$("btnBatchView").addEventListener("click", openBatchModal);
+$("btnBatchQuery").addEventListener("click", runBatch);
+$("btnCloseBatch").addEventListener("click", closeBatchModal);
+batchModal.addEventListener("click", (e) => {
+  if (e.target === batchModal) closeBatchModal();
+});
+$("batchSearch").addEventListener("input", () => {
+  renderBatchList($("batchSearch").value.trim());
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !batchModal.classList.contains("hidden")) closeBatchModal();
 });

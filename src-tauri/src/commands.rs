@@ -124,3 +124,12 @@ pub fn open_pdf_at_page(path: String, page: u32) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     Ok(())
 }
+
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    std::process::Command::new("cmd")
+        .args(["/c", "start", "", &url])
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}

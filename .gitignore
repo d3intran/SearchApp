@@ -14,3 +14,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Batch test artifacts
+批量测试输入.xlsx
+批量查询结果.xlsx
