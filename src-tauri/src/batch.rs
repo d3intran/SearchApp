@@ -33,6 +33,15 @@ pub struct BatchProgress {
     pub done: bool,
 }
 
+#[derive(Serialize, Clone)]
+pub struct BatchItemResult {
+    pub code: String,
+    pub validity: samr_status::ValidityResult,
+    pub cnas: crate::services::local_matcher::MatchResult,
+    pub cma_file: crate::services::local_matcher::MatchResult,
+    pub cma_api: cma_api::QueryResult,
+}
+
 #[tauri::command]
 pub fn parse_batch_file(path: String, state: State<'_, AppState>) -> Result<Vec<BatchInput>, String> {
     let entries = excel_parser::parse(&path)?;
@@ -112,13 +121,13 @@ fn write_output(rows: &[BatchRow], path: &str) -> Result<(), String> {
         ws.set_column_width(c as u16, *w).map_err(|e| e.to_string())?;
     }
 
-    let headers = ["标准号", "标准名", "有效性(SAMR)", "CNAS附表", "CMA附表", "CMA能力项目库"];
+    let headers = ["标准号", "标准名", "有效性(SAMR)", "CMA能力项目库", "CNAS附表", "CMA附表"];
     for (c, h) in headers.iter().enumerate() {
         ws.write_string_with_format(0, c as u16, *h, &header_fmt)
             .map_err(|e| e.to_string())?;
     }
     for (r, row) in rows.iter().enumerate() {
-        let vals = [&row.code, &row.name, &row.validity, &row.cnas, &row.cma_file, &row.cma_api];
+        let vals = [&row.code, &row.name, &row.validity, &row.cma_api, &row.cnas, &row.cma_file];
         for (c, val) in vals.iter().enumerate() {
             ws.write_string_with_format((r + 1) as u32, c as u16, (*val).clone(), &cell_fmt)
                 .map_err(|e| e.to_string())?;
@@ -164,18 +173,33 @@ pub async fn run_batch_query(
 
         random_delay().await;
 
-        let cnas_text = {
+        let cnas_result = {
             let state = app.state::<AppState>();
             let matcher = state.matcher.lock().unwrap();
-            matcher.query_cnas(&code).message
+            matcher.query_cnas(&code)
         };
-        let cma_file_text = {
+        let cma_file_result = {
             let state = app.state::<AppState>();
             let matcher = state.matcher.lock().unwrap();
-            matcher.query_cma(&code).message
+            matcher.query_cma(&code)
         };
 
         let cma_api_result = cma_api::query(&code, &cma_url).await;
+
+        // Emit real-time result for this standard to the query panels
+        let _ = app.emit(
+            "batch-item-result",
+            BatchItemResult {
+                code: code.clone(),
+                validity: validity.clone(),
+                cnas: cnas_result.clone(),
+                cma_file: cma_file_result.clone(),
+                cma_api: cma_api_result.clone(),
+            },
+        );
+
+        let cnas_text = cnas_result.message.clone();
+        let cma_file_text = cma_file_result.message.clone();
         let cma_api_text = cma_api_result.message.clone();
 
         let mut name = String::new();

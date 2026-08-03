@@ -572,12 +572,21 @@ async function runBatch() {
       : `(${p.current + 1}/${p.total}) ${p.code}`;
   });
 
+  const unlistenResult = await listen("batch-item-result", (event) => {
+    const r = event.payload;
+    renderValidity(r.validity);
+    renderMatch(cnasResult, r.cnas);
+    renderMatch(cmaResult, r.cma_file);
+    renderMatch(cmaApiResult, r.cma_api);
+  });
+
   try {
     await invoke("run_batch_query", {
       samrUrl: config.samr_url,
       cmaUrl: config.cma_url,
     });
     unlisten();
+    unlistenResult();
     fill.style.width = "100%";
     text.textContent = "100%";
     status.textContent = "查询完成，请选择保存位置...";
@@ -594,6 +603,7 @@ async function runBatch() {
     status.textContent = `已保存：${outPath}`;
   } catch (e) {
     unlisten();
+    unlistenResult();
     status.textContent = `批量查询失败：${e}`;
   } finally {
     $("btnBatchQuery").disabled = false;
