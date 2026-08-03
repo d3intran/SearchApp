@@ -146,14 +146,14 @@ pub async fn download(app: &AppHandle, url: &str) -> Result<(), String> {
 
     std::fs::write(&temp_path, &file_bytes).map_err(|e| e.to_string())?;
 
-    let bat_path: PathBuf = dir.join("update.bat");
-    let bat = format!(
-        "@echo off\r\nchcp 65001 >nul\r\ntimeout /t 2 /nobreak >nul\r\nmove /y \"{}\" \"{}\" >nul\r\nstart \"\" \"{}\"\r\ndel \"%~f0\"\r\n",
+    let ps_path: PathBuf = dir.join("update.ps1");
+    let ps = format!(
+        "Start-Sleep -Seconds 2\r\nMove-Item -Force '{}' '{}'\r\nStart-Process '{}'\r\nRemove-Item -LiteralPath $PSCommandPath\r\n",
         temp_path.display(),
         exe_path.display(),
         exe_path.display()
     );
-    std::fs::write(&bat_path, bat).map_err(|e| e.to_string())?;
+    std::fs::write(&ps_path, ps).map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -161,14 +161,14 @@ pub async fn download(app: &AppHandle, url: &str) -> Result<(), String> {
 pub fn apply() {
     let exe_path = std::env::current_exe().unwrap_or_default();
     let dir = exe_path.parent().unwrap_or_else(|| std::path::Path::new("."));
-    let bat_path = dir.join("update.bat");
+    let ps_path = dir.join("update.ps1");
 
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        let _ = std::process::Command::new("cmd")
-            .args(["/C", bat_path.to_str().unwrap_or("")])
+        let _ = std::process::Command::new("powershell")
+            .args(["-ExecutionPolicy", "Bypass", "-File", ps_path.to_str().unwrap_or("")])
             .creation_flags(CREATE_NO_WINDOW)
             .spawn();
     }
