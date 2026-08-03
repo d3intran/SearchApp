@@ -147,13 +147,16 @@ pub async fn download(app: &AppHandle, url: &str) -> Result<(), String> {
     std::fs::write(&temp_path, &file_bytes).map_err(|e| e.to_string())?;
 
     let ps_path: PathBuf = dir.join("update.ps1");
-    let ps = format!(
+    let ps_content = format!(
         "Start-Sleep -Seconds 2\r\nMove-Item -Force '{}' '{}'\r\nStart-Process '{}'\r\nRemove-Item -LiteralPath $PSCommandPath\r\n",
         temp_path.display(),
         exe_path.display(),
         exe_path.display()
     );
-    std::fs::write(&ps_path, ps).map_err(|e| e.to_string())?;
+    // UTF-8 BOM: EF BB BF
+    let mut ps_bytes = vec![0xEF, 0xBB, 0xBF];
+    ps_bytes.extend_from_slice(ps_content.as_bytes());
+    std::fs::write(&ps_path, &ps_bytes).map_err(|e| e.to_string())?;
 
     Ok(())
 }
