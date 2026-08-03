@@ -148,7 +148,7 @@ pub async fn download(app: &AppHandle, url: &str) -> Result<(), String> {
 
     let bat_path: PathBuf = dir.join("update.bat");
     let bat = format!(
-        "@echo off\r\ntimeout /t 2 /nobreak >nul\r\nmove /y \"{}\" \"{}\" >nul\r\nstart \"\" \"{}\"\r\ndel \"%~f0\"\r\n",
+        "@echo off\r\nchcp 65001 >nul\r\ntimeout /t 2 /nobreak >nul\r\nmove /y \"{}\" \"{}\" >nul\r\nstart \"\" \"{}\"\r\ndel \"%~f0\"\r\n",
         temp_path.display(),
         exe_path.display(),
         exe_path.display()
