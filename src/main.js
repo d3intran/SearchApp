@@ -243,11 +243,8 @@ $("btnOpenSamr").addEventListener("click", () => {
 });
 
 $("btnOpenCma").addEventListener("click", () => {
-  const code = standardInput.value.trim().replace(/\s+/g, "");
   const baseUrl = config.cma_url || "https://cma.caqit.org.cn";
-  const url = code
-    ? `${baseUrl.replace(/\/+$/, "")}/cma-admin/system/standardData/list?pageNum=1&pageSize=20&standardCode=${encodeURIComponent(code)}`
-    : baseUrl;
+  const url = `${baseUrl.replace(/\/+$/, "")}/#/data`;
   invoke("open_url", { url });
 });
 
