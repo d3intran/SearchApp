@@ -11,7 +11,7 @@ use std::sync::Mutex;
 pub struct AppState {
     pub matcher: Mutex<LocalFileMatcher>,
     pub batch_inputs: Mutex<Vec<batch::BatchInput>>,
-    pub batch_results: Mutex<Vec<batch::BatchRow>>,
+    pub batch_control: Mutex<batch::BatchControl>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -21,7 +21,7 @@ pub fn run() {
         .manage(AppState {
             matcher: Mutex::new(LocalFileMatcher::new()),
             batch_inputs: Mutex::new(Vec::new()),
-            batch_results: Mutex::new(Vec::new()),
+            batch_control: Mutex::new(batch::BatchControl { paused: false }),
         })
         .invoke_handler(tauri::generate_handler![
             commands::query_validity,
@@ -45,7 +45,8 @@ pub fn run() {
             batch::get_batch_inputs,
             batch::clear_batch_inputs,
             batch::run_batch_query,
-            batch::save_batch_result,
+            batch::pause_batch_query,
+            batch::resume_batch_query,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

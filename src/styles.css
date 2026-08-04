@@ -257,11 +257,6 @@ body {
   background: rgba(0, 0, 0, 0.08);
 }
 
-/* Validity card */
-.validity-card {
-  flex-shrink: 0;
-}
-
 .card-header {
   display: flex;
   align-items: center;
@@ -307,24 +302,73 @@ body {
   color: var(--text-tertiary);
 }
 
-/* Panels */
-.panels {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px;
+/* Unified results panel */
+.panels-card {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.panels-head {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+}
+.panel-head:first-child {
+  padding-left: 0;
+}
+.panel-head:not(:first-child) {
+  border-left: 1px dashed rgba(0, 0, 0, 0.15);
+}
+
+.results-scroll {
+  flex: 1;
+  overflow-y: auto;
   min-height: 0;
 }
 
-.panel {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+.results-body {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
 }
 
-.panel .result-text {
-  flex: 1;
-  overflow-y: auto;
+.result-cell {
+  padding: 8px 12px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.6;
+}
+
+.cell-validity {
+  padding-left: 0;
+}
+
+.cell-cmaapi,
+.cell-cnas,
+.cell-cmafile {
+  border-left: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.batch-divider {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  padding: 6px 0 2px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.18);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 /* Spinner */

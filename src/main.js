@@ -8,10 +8,32 @@ const appWindow = getCurrentWindow();
 
 const standardInput = $("standardInput");
 const btnQuery = $("btnQuery");
-const validityResult = $("validityResult");
-const cnasResult = $("cnasResult");
-const cmaResult = $("cmaResult");
-const cmaApiResult = $("cmaApiResult");
+const resultsBody = $("resultsBody");
+const resultsScroll = $("resultsScroll");
+
+// Current row cells: { validity, cmaApi, cnas, cmaFile }
+let curCells = null;
+
+function createCells() {
+  const mk = (cls) => {
+    const d = document.createElement("div");
+    d.className = `result-cell ${cls}`;
+    resultsBody.appendChild(d);
+    return d;
+  };
+  curCells = {
+    validity: mk("cell-validity"),
+    cmaApi: mk("cell-cmaapi"),
+    cnas: mk("cell-cnas"),
+    cmaFile: mk("cell-cmafile"),
+  };
+  return curCells;
+}
+
+function clearResultsArea() {
+  resultsBody.textContent = "";
+  curCells = null;
+}
 
 // In-memory config (loaded from persisted config.json on startup)
 let config = { cma_url: "", samr_url: "" };
@@ -32,10 +54,12 @@ function setPlaceholder(el, text) {
 }
 
 function resetResults() {
-  setPlaceholder(validityResult, "查询中...");
-  setPlaceholder(cnasResult, "查询中...");
-  setPlaceholder(cmaResult, "查询中...");
-  setPlaceholder(cmaApiResult, "查询中...");
+  clearResultsArea();
+  const c = createCells();
+  setPlaceholder(c.validity, "查询中...");
+  setPlaceholder(c.cmaApi, "查询中...");
+  setPlaceholder(c.cnas, "查询中...");
+  setPlaceholder(c.cmaFile, "查询中...");
 }
 
 function statusColor(status) {
@@ -48,14 +72,14 @@ function statusColor(status) {
   }
 }
 
-function renderValidity(result) {
-  validityResult.textContent = "";
+function renderValidityTo(el, result) {
+  el.textContent = "";
   result.lines.forEach((line, i) => {
-    if (i > 0) validityResult.appendChild(document.createElement("br"));
+    if (i > 0) el.appendChild(document.createElement("br"));
     const span = document.createElement("span");
     span.className = `color-${line.color}`;
     span.textContent = line.text;
-    validityResult.appendChild(span);
+    el.appendChild(span);
   });
 }
 
@@ -78,7 +102,8 @@ function renderError(el) {
 async function doQuery() {
   const input = standardInput.value.trim();
   if (!input) {
-    setPlaceholder(validityResult, "请先输入标准号或标准名称");
+    clearResultsArea();
+    setPlaceholder(createCells().validity, "请先输入标准号或标准名称");
     return;
   }
 
@@ -96,17 +121,18 @@ async function doQuery() {
     invoke("query_cma_api", { stdCode: input, baseUrl: cmaUrl }),
   ]);
 
-  if (validity.status === "fulfilled") renderValidity(validity.value);
-  else renderError(validityResult);
+  const c = curCells;
+  if (validity.status === "fulfilled") renderValidityTo(c.validity, validity.value);
+  else renderError(c.validity);
 
-  if (cnas.status === "fulfilled") renderMatch(cnasResult, cnas.value);
-  else renderError(cnasResult);
+  if (cmaApi.status === "fulfilled") renderMatch(c.cmaApi, cmaApi.value);
+  else renderError(c.cmaApi);
 
-  if (cma.status === "fulfilled") renderMatch(cmaResult, cma.value);
-  else renderError(cmaResult);
+  if (cnas.status === "fulfilled") renderMatch(c.cnas, cnas.value);
+  else renderError(c.cnas);
 
-  if (cmaApi.status === "fulfilled") renderMatch(cmaApiResult, cmaApi.value);
-  else renderError(cmaApiResult);
+  if (cma.status === "fulfilled") renderMatch(c.cmaFile, cma.value);
+  else renderError(c.cmaFile);
 
   setLoading(false);
 }
@@ -457,7 +483,7 @@ function renderBatchFile() {
     empty.className = "file-list-empty";
     empty.textContent = "未加载";
     listEl.appendChild(empty);
-    $("btnBatchView").disabled = true;
+    $("btnBatchView").classList.add("hidden");
     $("btnBatchQuery").disabled = true;
     return;
   }
@@ -483,7 +509,7 @@ function renderBatchFile() {
   chip.appendChild(label);
   chip.appendChild(rm);
   listEl.appendChild(chip);
-  $("btnBatchView").disabled = false;
+  $("btnBatchView").classList.remove("hidden");
   $("btnBatchQuery").disabled = false;
 }
 
@@ -548,8 +574,33 @@ function closeBatchModal() {
   batchModal.classList.add("hidden");
 }
 
+function appendBatchItem(r) {
+  const divider = document.createElement("div");
+  divider.className = "batch-divider";
+  divider.textContent = r.code;
+  resultsBody.appendChild(divider);
+
+  const c = createCells();
+  renderValidityTo(c.validity, r.validity);
+  renderMatch(c.cmaApi, r.cma_api);
+  renderMatch(c.cnas, r.cnas);
+  renderMatch(c.cmaFile, r.cma_file);
+  resultsScroll.scrollTop = resultsScroll.scrollHeight;
+}
+
+function setBatchPausedUI(paused) {
+  $("btnBatchPause").classList.toggle("hidden", paused);
+  $("btnBatchResume").classList.toggle("hidden", !paused);
+}
+
 async function runBatch() {
   if (batchInputs.length === 0) return;
+
+  const outPath = await save({
+    defaultPath: "批量查询结果.xlsx",
+    filters: [{ name: "Excel", extensions: ["xlsx"] }],
+  });
+  if (!outPath) return;
 
   const progress = $("batchProgress");
   const fill = $("batchProgressFill");
@@ -559,57 +610,62 @@ async function runBatch() {
   fill.style.width = "0%";
   text.textContent = "0%";
   status.textContent = "准备中...";
+  setBatchPausedUI(false);
   $("btnBatchQuery").disabled = true;
   $("btnBatchFile").disabled = true;
+
+  clearResultsArea();
 
   const unlisten = await listen("batch-progress", (event) => {
     const p = event.payload;
     const pct = Math.round(p.percent);
     fill.style.width = pct + "%";
     text.textContent = pct + "%";
-    status.textContent = p.done
-      ? "查询完成"
-      : `(${p.current + 1}/${p.total}) ${p.code}`;
+    if (p.warning) {
+      status.textContent = p.warning;
+      setBatchPausedUI(true);
+    } else if (p.done) {
+      status.textContent = `查询完成，已保存：${outPath}`;
+    } else if (p.paused) {
+      status.textContent = "已暂停";
+      setBatchPausedUI(true);
+    } else {
+      status.textContent = `(${p.current + 1}/${p.total}) ${p.code}`;
+      setBatchPausedUI(false);
+    }
   });
 
   const unlistenResult = await listen("batch-item-result", (event) => {
-    const r = event.payload;
-    renderValidity(r.validity);
-    renderMatch(cnasResult, r.cnas);
-    renderMatch(cmaResult, r.cma_file);
-    renderMatch(cmaApiResult, r.cma_api);
+    appendBatchItem(event.payload);
   });
 
   try {
     await invoke("run_batch_query", {
       samrUrl: config.samr_url,
       cmaUrl: config.cma_url,
+      outputPath: outPath,
     });
-    unlisten();
-    unlistenResult();
-    fill.style.width = "100%";
-    text.textContent = "100%";
-    status.textContent = "查询完成，请选择保存位置...";
-
-    const outPath = await save({
-      defaultPath: "批量查询结果.xlsx",
-      filters: [{ name: "Excel", extensions: ["xlsx"] }],
-    });
-    if (!outPath) {
-      status.textContent = "查询完成，未保存结果";
-      return;
-    }
-    await invoke("save_batch_result", { outputPath: outPath });
-    status.textContent = `已保存：${outPath}`;
   } catch (e) {
-    unlisten();
-    unlistenResult();
     status.textContent = `批量查询失败：${e}`;
   } finally {
+    unlisten();
+    unlistenResult();
+    $("btnBatchPause").classList.add("hidden");
+    $("btnBatchResume").classList.add("hidden");
     $("btnBatchQuery").disabled = false;
     $("btnBatchFile").disabled = false;
   }
 }
+
+$("btnBatchPause").addEventListener("click", async () => {
+  await invoke("pause_batch_query");
+  setBatchPausedUI(true);
+  $("batchStatusText").textContent = "已暂停";
+});
+$("btnBatchResume").addEventListener("click", async () => {
+  await invoke("resume_batch_query");
+  setBatchPausedUI(false);
+});
 
 $("btnBatchFile").addEventListener("click", loadBatchFile);
 $("btnBatchView").addEventListener("click", openBatchModal);

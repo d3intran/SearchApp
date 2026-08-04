@@ -69,67 +69,62 @@
         <div class="batch-row">
           <button id="btnBatchFile" class="btn btn-small">选择批量文件...</button>
           <button id="btnBatchQuery" class="btn btn-primary" disabled>批量查询</button>
-          <button id="btnBatchView" class="btn btn-small" disabled>查看已解析标准</button>
           <div id="batchFileList" class="file-list"><span class="file-list-empty">未加载</span></div>
+          <button id="btnBatchView" class="icon-btn hidden" title="查看已解析标准">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+          </button>
         </div>
         <div id="batchProgress" class="update-progress hidden">
           <div class="progress-bar"><div id="batchProgressFill" class="progress-fill"></div></div>
           <span id="batchProgressText" class="progress-text">0%</span>
+          <button id="btnBatchPause" class="btn btn-small hidden">暂停</button>
+          <button id="btnBatchResume" class="btn btn-small hidden">恢复</button>
           <span id="batchStatusText" class="batch-status-text"></span>
         </div>
       </div>
     </section>
 
-    <!-- 中部：标准有效性查询结果 -->
-    <section class="card validity-card">
-      <div class="card-header">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
-        </svg>
-        <span class="card-title">标准有效性查询结果</span>
-        <span id="validitySpinner" class="spinner hidden"></span>
-        <button id="btnOpenSamr" class="icon-btn hidden" title="在浏览器中打开国标平台查询">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-          </svg>
-        </button>
-      </div>
-      <div id="validityResult" class="result-text placeholder">请输入标准号后点击查询</div>
-    </section>
-
-    <!-- 底部：三栏结果面板 -->
-    <section class="panels">
-      <div class="card panel">
-        <div class="card-header">
+    <!-- 结果面板：四列一排，统一滚动 -->
+    <section class="card panels-card">
+      <div class="panels-head">
+        <div class="panel-head">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/>
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
           </svg>
-          <span class="card-title">CNAS附表查询结果</span>
-          <span id="cnasSpinner" class="spinner hidden"></span>
+          <span class="card-title">标准有效性</span>
+          <span id="validitySpinner" class="spinner hidden"></span>
+          <button id="btnOpenSamr" class="icon-btn hidden" title="在浏览器中打开国标平台查询">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+          </button>
         </div>
-        <div id="cnasResult" class="result-text placeholder">等待查询...</div>
-      </div>
-
-      <div class="card panel">
-        <div class="card-header">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-          </svg>
-          <span class="card-title">CMA附表查询结果</span>
-          <span id="cmaSpinner" class="spinner hidden"></span>
-        </div>
-        <div id="cmaResult" class="result-text placeholder">等待查询...</div>
-      </div>
-
-      <div class="card panel">
-        <div class="card-header">
+        <div class="panel-head">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
-          <span class="card-title">CMA能力项目库查询结果</span>
+          <span class="card-title">CMA能力项目库</span>
           <span id="cmaApiSpinner" class="spinner hidden"></span>
         </div>
-        <div id="cmaApiResult" class="result-text placeholder">等待查询...</div>
+        <div class="panel-head">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/>
+          </svg>
+          <span class="card-title">CNAS附表</span>
+          <span id="cnasSpinner" class="spinner hidden"></span>
+        </div>
+        <div class="panel-head">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+          </svg>
+          <span class="card-title">CMA附表</span>
+          <span id="cmaSpinner" class="spinner hidden"></span>
+        </div>
+      </div>
+      <div id="resultsScroll" class="results-scroll">
+        <div id="resultsBody" class="results-body"></div>
       </div>
     </section>
   </div>

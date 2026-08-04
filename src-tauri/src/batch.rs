@@ -31,6 +31,8 @@ pub struct BatchProgress {
     pub code: String,
     pub percent: f64,
     pub done: bool,
+    pub paused: bool,
+    pub warning: String,
 }
 
 #[derive(Serialize, Clone)]
@@ -40,6 +42,39 @@ pub struct BatchItemResult {
     pub cnas: crate::services::local_matcher::MatchResult,
     pub cma_file: crate::services::local_matcher::MatchResult,
     pub cma_api: cma_api::QueryResult,
+}
+
+pub struct BatchControl {
+    pub paused: bool,
+}
+
+#[tauri::command]
+pub fn pause_batch_query(state: State<'_, AppState>) {
+    state.batch_control.lock().unwrap().paused = true;
+}
+
+#[tauri::command]
+pub fn resume_batch_query(state: State<'_, AppState>) {
+    state.batch_control.lock().unwrap().paused = false;
+}
+
+fn set_paused(app: &AppHandle, paused: bool) {
+    let state = app.state::<AppState>();
+    state.batch_control.lock().unwrap().paused = paused;
+}
+
+fn is_paused(app: &AppHandle) -> bool {
+    let state = app.state::<AppState>();
+    let guard = state.batch_control.lock().unwrap();
+    let paused = guard.paused;
+    drop(guard);
+    paused
+}
+
+async fn wait_while_paused(app: &AppHandle) {
+    while is_paused(app) {
+        tokio::time::sleep(Duration::from_millis(300)).await;
+    }
 }
 
 #[tauri::command]
@@ -141,15 +176,25 @@ pub async fn run_batch_query(
     app: AppHandle,
     samr_url: String,
     cma_url: String,
+    output_path: String,
 ) -> Result<usize, String> {
     let inputs = app.state::<AppState>().batch_inputs.lock().unwrap().clone();
     if inputs.is_empty() {
         return Err("没有可查询的标准，请先选择批量文件".into());
     }
+
+    set_paused(&app, false);
     let total = inputs.len();
-    let mut rows = Vec::new();
+    let mut rows: Vec<BatchRow> = Vec::new();
+
+    // Write header first to fail fast if the file is locked (e.g. opened in Excel)
+    write_output(&rows, &output_path).map_err(|_| {
+        "无法写入目标文件，请确认该 Excel 文件已关闭后重试".to_string()
+    })?;
 
     for (i, input) in inputs.iter().enumerate() {
+        wait_while_paused(&app).await;
+
         let code = standard_parser::extract_code(&input.code);
 
         let _ = app.emit(
@@ -160,6 +205,8 @@ pub async fn run_batch_query(
                 code: code.clone(),
                 percent: (i as f64 / total as f64) * 100.0,
                 done: false,
+                paused: false,
+                warning: String::new(),
             },
         );
 
@@ -186,7 +233,6 @@ pub async fn run_batch_query(
 
         let cma_api_result = cma_api::query(&code, &cma_url).await;
 
-        // Emit real-time result for this standard to the query panels
         let _ = app.emit(
             "batch-item-result",
             BatchItemResult {
@@ -221,6 +267,29 @@ pub async fn run_batch_query(
             cma_api: cma_api_text,
         });
 
+        // Incremental save; if the file is locked, pause and wait for user to resume
+        loop {
+            match write_output(&rows, &output_path) {
+                Ok(_) => break,
+                Err(_) => {
+                    set_paused(&app, true);
+                    let _ = app.emit(
+                        "batch-progress",
+                        BatchProgress {
+                            current: i + 1,
+                            total,
+                            code: String::new(),
+                            percent: ((i + 1) as f64 / total as f64) * 100.0,
+                            done: false,
+                            paused: true,
+                            warning: "结果文件写入失败（可能正被 Excel 打开），请关闭该文件后点击「恢复」".into(),
+                        },
+                    );
+                    wait_while_paused(&app).await;
+                }
+            }
+        }
+
         if i < total - 1 {
             random_delay().await;
         }
@@ -234,20 +303,10 @@ pub async fn run_batch_query(
             code: String::new(),
             percent: 100.0,
             done: true,
+            paused: false,
+            warning: String::new(),
         },
     );
 
-    let state = app.state::<AppState>();
-    *state.batch_results.lock().unwrap() = rows;
     Ok(total)
-}
-
-#[tauri::command]
-pub fn save_batch_result(output_path: String, state: State<'_, AppState>) -> Result<String, String> {
-    let rows = state.batch_results.lock().unwrap().clone();
-    if rows.is_empty() {
-        return Err("没有可保存的批量查询结果".into());
-    }
-    write_output(&rows, &output_path)?;
-    Ok(output_path)
 }
