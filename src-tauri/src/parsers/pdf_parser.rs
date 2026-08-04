@@ -55,7 +55,7 @@ fn decode_bytes(bytes: &[u8], info: Option<&FontInfo>) -> String {
     let mut out = String::new();
     let (map, width) = match info {
         Some(fi) => (fi.map.as_ref(), if fi.is_cid { 2 } else { 1 }),
-        None => (None, 2),
+        None => (None, 1),
     };
     let mut i = 0;
     while i + width <= bytes.len() {
@@ -68,6 +68,8 @@ fn decode_bytes(bytes: &[u8], info: Option<&FontInfo>) -> String {
             if let Some(s) = m.get(code) {
                 out.push_str(s);
             }
+        } else if width == 1 {
+            out.push(code as u8 as char);
         }
         i += width;
     }
@@ -419,3 +421,19 @@ pub fn parse(path: &str) -> Result<Vec<StandardEntry>, String> {
 
     Ok(entries)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cnas_pdf_parse() {
+        let pdf_path = r"E:\GKY\Tauri_doc\CNAS认可的检测能力范围附表.pdf";
+        if std::path::Path::new(pdf_path).exists() {
+            let entries = parse(pdf_path).expect("解析PDF应当成功");
+            println!("解析测试导出条目数量: {}", entries.len());
+            assert!(entries.len() > 0, "提取条目数量应当大于0");
+        }
+    }
+}
+
