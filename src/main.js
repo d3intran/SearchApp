@@ -110,6 +110,7 @@ async function doQuery() {
   setLoading(true);
   resetResults();
   $("btnOpenSamr").classList.remove("hidden");
+  $("btnOpenCma").classList.remove("hidden");
 
   const cmaUrl = config.cma_url;
   const samrUrl = config.samr_url;
@@ -238,6 +239,15 @@ $("btnOpenSamr").addEventListener("click", () => {
   const code = standardInput.value.trim().replace(/\s+/g, "");
   if (!code) return;
   const url = `https://std.samr.gov.cn/search/std?q=${encodeURIComponent(code)}`;
+  invoke("open_url", { url });
+});
+
+$("btnOpenCma").addEventListener("click", () => {
+  const code = standardInput.value.trim().replace(/\s+/g, "");
+  const baseUrl = config.cma_url || "https://cma.caqit.org.cn";
+  const url = code
+    ? `${baseUrl.replace(/\/+$/, "")}/cma-admin/system/standardData/list?pageNum=1&pageSize=20&standardCode=${encodeURIComponent(code)}`
+    : baseUrl;
   invoke("open_url", { url });
 });
 

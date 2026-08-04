@@ -173,16 +173,17 @@ impl LocalFileMatcher {
 }
 
 fn parse_and_add(path: &str, files: &mut Vec<LoadedFile>) -> Result<(), String> {
-    if files.iter().any(|f| f.path == path) {
-        return Ok(()); // already loaded, skip
-    }
     let entries = parsers::parse_file(path)?;
     let name = std::path::Path::new(path)
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or(path)
         .to_string();
-    files.push(LoadedFile { path: path.to_string(), name, entries });
+    if let Some(pos) = files.iter().position(|f| f.path == path) {
+        files[pos] = LoadedFile { path: path.to_string(), name, entries };
+    } else {
+        files.push(LoadedFile { path: path.to_string(), name, entries });
+    }
     Ok(())
 }
 
