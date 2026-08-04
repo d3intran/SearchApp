@@ -278,6 +278,15 @@ fn detect_grid(page: &PageData) -> Option<Grid> {
 
 // ---------- public entry ----------
 
+fn clean_standard_name(s: &str) -> String {
+    let s = s.trim();
+    let prefix_re = Regex::new(r"^(?:\d+(?:\.\d+)*[.\s]*)+").unwrap();
+    let cleaned = prefix_re.replace(s, "");
+    cleaned
+        .trim_matches(|c: char| c == '、' || c == '，' || c == ',' || c == ' ' || c == ':')
+        .to_string()
+}
+
 fn floor_char_boundary(s: &str, idx: usize) -> usize {
     let mut i = idx.min(s.len());
     while i > 0 && !s.is_char_boundary(i) {
@@ -349,7 +358,7 @@ pub fn parse(path: &str) -> Result<Vec<StandardEntry>, String> {
                     let name = {
                         let after_end = floor_char_boundary(&text, mend + 150);
                         let after = &text[mend..after_end];
-                        if let Some(b) = bracket_re.captures(after) {
+                        let raw = if let Some(b) = bracket_re.captures(after) {
                             b[1].replace('\n', "").trim().to_string()
                         } else {
                             let bs = floor_char_boundary(&text, mstart.saturating_sub(150));
@@ -365,7 +374,8 @@ pub fn parse(path: &str) -> Result<Vec<StandardEntry>, String> {
                                 seg.trim_matches(|c: char| c == '、' || c == '，' || c == ',' || c.is_whitespace())
                                     .to_string()
                             }
-                        }
+                        };
+                        clean_standard_name(&raw)
                     };
                     prev_end = mend;
 
@@ -398,7 +408,7 @@ pub fn parse(path: &str) -> Result<Vec<StandardEntry>, String> {
                 let name = {
                     let after_end = floor_char_boundary(&flat, mend + 150);
                     let after = &flat[mend..after_end];
-                    if let Some(b) = bracket_re.captures(after) {
+                    let raw = if let Some(b) = bracket_re.captures(after) {
                         b[1].replace('\n', "").trim().to_string()
                     } else {
                         let seg = flat[prev_end..mstart].replace('\n', "");
@@ -408,7 +418,8 @@ pub fn parse(path: &str) -> Result<Vec<StandardEntry>, String> {
                         };
                         seg.trim_matches(|c: char| c == '、' || c == '，' || c == ',' || c.is_whitespace())
                             .to_string()
-                    }
+                    };
+                    clean_standard_name(&raw)
                 };
                 prev_end = mend;
                 if !seen.insert(norm) {
