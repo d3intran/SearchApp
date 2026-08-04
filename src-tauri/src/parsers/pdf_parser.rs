@@ -443,6 +443,9 @@ mod tests {
         if std::path::Path::new(pdf_path).exists() {
             let entries = parse(pdf_path).expect("解析PDF应当成功");
             println!("解析测试导出条目数量: {}", entries.len());
+            for (i, e) in entries.iter().take(20).enumerate() {
+                println!("{:3}: [{}] name='{}'", i + 1, e.code, e.name);
+            }
             assert!(entries.len() > 0, "提取条目数量应当大于0");
         }
     }
