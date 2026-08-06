@@ -140,6 +140,14 @@ impl LocalFileMatcher {
         query_index(&self.cma_index, std_code, "CMA附表")
     }
 
+    pub fn query_cnas_by_name(&self, name: &str) -> MatchResult {
+        query_index_by_name(&self.cnas_index, name, "CNAS附表")
+    }
+
+    pub fn query_cma_by_name(&self, name: &str) -> MatchResult {
+        query_index_by_name(&self.cma_index, name, "CMA附表")
+    }
+
     pub fn get_all_entries(&self) -> Vec<BrowseEntry> {
         let mut result = Vec::new();
         for file in &self.cnas_files {
@@ -248,6 +256,51 @@ fn query_index(
     MatchResult {
         status: "nomatch".into(),
         message: "无匹配".into(),
+    }
+}
+
+fn normalize_name(s: &str) -> String {
+    s.to_lowercase().replace(' ', "").replace('\u{3000}', "")
+}
+
+fn query_index_by_name(
+    index: &HashMap<String, Vec<StandardEntry>>,
+    name: &str,
+    source_name: &str,
+) -> MatchResult {
+    if index.is_empty() {
+        return MatchResult {
+            status: "error".into(),
+            message: format!("未加载{}文件，请先选择文件", source_name),
+        };
+    }
+
+    let target = normalize_name(name.trim());
+    if target.is_empty() {
+        return MatchResult {
+            status: "nomatch".into(),
+            message: "无匹配".into(),
+        };
+    }
+
+    let matches: Vec<&StandardEntry> = index
+        .values()
+        .flatten()
+        .filter(|e| !e.name.is_empty() && normalize_name(&e.name).contains(&target))
+        .take(10)
+        .collect();
+
+    if matches.is_empty() {
+        return MatchResult {
+            status: "nomatch".into(),
+            message: "无匹配".into(),
+        };
+    }
+
+    let lines: Vec<String> = matches.iter().map(|e| format!("{} {}", e.code, e.name)).collect();
+    MatchResult {
+        status: "exact".into(),
+        message: format!("按名称匹配到 {} 条结果。\n{}", matches.len(), lines.join("\n")),
     }
 }
 

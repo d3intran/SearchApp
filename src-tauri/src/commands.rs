@@ -8,6 +8,12 @@ pub async fn query_validity(
     std_code: String,
     samr_url: String,
 ) -> samr_status::ValidityResult {
+    let raw = std_code.trim().to_string();
+
+    if !standard_parser::contains_code(&raw) {
+        return samr_status::query_by_name(&raw, &samr_url).await;
+    }
+
     let code = standard_parser::extract_code(&std_code);
     let mut result = samr_status::query(&code, &samr_url).await;
 
@@ -34,12 +40,21 @@ pub async fn query_validity(
 
 #[tauri::command]
 pub async fn query_cma_api(std_code: String, base_url: String) -> cma_api::QueryResult {
+    let raw = std_code.trim();
+    if !standard_parser::contains_code(raw) {
+        return cma_api::query_by_name(raw, &base_url).await;
+    }
     let code = standard_parser::extract_code(&std_code);
     cma_api::query(&code, &base_url).await
 }
 
 #[tauri::command]
 pub fn query_cnas(std_code: String, state: State<'_, AppState>) -> MatchResult {
+    let raw = std_code.trim();
+    if !standard_parser::contains_code(raw) {
+        let matcher = state.matcher.lock().unwrap();
+        return matcher.query_cnas_by_name(raw);
+    }
     let code = standard_parser::extract_code(&std_code);
     let matcher = state.matcher.lock().unwrap();
     matcher.query_cnas(&code)
@@ -47,6 +62,11 @@ pub fn query_cnas(std_code: String, state: State<'_, AppState>) -> MatchResult {
 
 #[tauri::command]
 pub fn query_cma_file(std_code: String, state: State<'_, AppState>) -> MatchResult {
+    let raw = std_code.trim();
+    if !standard_parser::contains_code(raw) {
+        let matcher = state.matcher.lock().unwrap();
+        return matcher.query_cma_by_name(raw);
+    }
     let code = standard_parser::extract_code(&std_code);
     let matcher = state.matcher.lock().unwrap();
     matcher.query_cma(&code)

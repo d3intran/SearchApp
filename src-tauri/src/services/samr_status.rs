@@ -21,8 +21,8 @@ struct ParsedCard {
     status: String,
 }
 
-pub async fn query(std_code: &str, base_url: &str) -> ValidityResult {
-    let clean_query = std_code.replace(' ', "");
+async fn fetch_cards(query: &str, base_url: &str) -> Result<(Vec<ParsedCard>, u32), String> {
+    let clean_query = query.replace(' ', "");
     let encoded = urlencoding::encode(&clean_query);
     let url = format!(
         "{}/search/stdPage?q={}&tid=",
@@ -31,27 +31,72 @@ pub async fn query(std_code: &str, base_url: &str) -> ValidityResult {
     );
 
     let client = reqwest::Client::new();
-    let resp = match client
+    let resp = client
         .get(&url)
         .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
         .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
         .send()
         .await
-    {
-        Ok(r) => r,
-        Err(e) => {
-            return error_result(&format!("请求失败：{}", e));
-        }
+        .map_err(|e| format!("请求失败：{}", e))?;
+
+    let html = resp.text().await.map_err(|e| format!("读取响应失败：{}", e))?;
+    let total_pages = Regex::new(r"totalPages:(\d+)")
+        .unwrap()
+        .captures(&html)
+        .and_then(|cap| cap[1].parse().ok())
+        .unwrap_or(1);
+    Ok((parse_cards(&html), total_pages))
+}
+
+pub async fn query_by_name(std_name: &str, base_url: &str) -> ValidityResult {
+    let (cards, total_pages) = match fetch_cards(std_name, base_url).await {
+        Ok(c) => c,
+        Err(e) => return error_result(&e),
     };
 
-    let html = match resp.text().await {
-        Ok(h) => h,
-        Err(e) => {
-            return error_result(&format!("读取响应失败：{}", e));
-        }
+    if cards.is_empty() {
+        return ValidityResult {
+            found: false,
+            lines: vec![ValidityLine {
+                text: "无匹配结果".into(),
+                color: "red".into(),
+            }],
+        };
+    }
+
+    let mut lines = vec![ValidityLine {
+        text: format!("按名称找到 {} 个相关标准：", cards.len()),
+        color: "yellow".into(),
+    }];
+    for c in cards.iter().take(10) {
+        let color = if c.status.contains("废止") || c.status.contains("作废") {
+            "red"
+        } else {
+            "green"
+        };
+        lines.push(ValidityLine {
+            text: format!("· {} {}（{}）", c.code, c.name, c.status),
+            color: color.into(),
+        });
+    }
+    if total_pages > 1 {
+        lines.push(ValidityLine {
+            text: format!(
+                "共 {} 页结果，当前仅显示第 1 页，更多内容请前往全国标准信息公共服务平台查看",
+                total_pages
+            ),
+            color: "gray".into(),
+        });
+    }
+    ValidityResult { found: true, lines }
+}
+
+pub async fn query(std_code: &str, base_url: &str) -> ValidityResult {
+    let (cards, total_pages) = match fetch_cards(std_code, base_url).await {
+        Ok(c) => c,
+        Err(e) => return error_result(&e),
     };
 
-    let cards = parse_cards(&html);
     if cards.is_empty() {
         return ValidityResult {
             found: false,
@@ -88,6 +133,15 @@ pub async fn query(std_code: &str, base_url: &str) -> ValidityResult {
             lines.push(ValidityLine {
                 text: format!("· {} {}（{}）", c.code, c.name, c.status),
                 color: color.into(),
+            });
+        }
+        if total_pages > 1 {
+            lines.push(ValidityLine {
+                text: format!(
+                    "共 {} 页结果，当前仅显示第 1 页，更多内容请前往全国标准信息公共服务平台查看",
+                    total_pages
+                ),
+                color: "gray".into(),
             });
         }
         return ValidityResult { found: true, lines };
@@ -161,7 +215,7 @@ fn parse_cards(html: &str) -> Vec<ParsedCard> {
     let parts: Vec<&str> = html.split("<div class=\"panel panel-default post\">").collect();
 
     let code_re = Regex::new(r#"<span class="en-code">([\s\S]*?)</span>"#).unwrap();
-    let name_re = Regex::new(r#"<span class="en-code">[\s\S]*?</span>(?:&nbsp;)*\s*([^<]+)</a>"#).unwrap();
+    let name_re = Regex::new(r#"<span class="en-code">[\s\S]*?</span>([\s\S]*?)</a>"#).unwrap();
     let status_re = Regex::new(r#"<span class="s-status label label-[^"\s]+">([^<]+)</span>"#).unwrap();
     let tag_re = Regex::new(r"<[^>]+>").unwrap();
 
@@ -172,7 +226,13 @@ fn parse_cards(html: &str) -> Vec<ParsedCard> {
         };
         let name = name_re
             .captures(part)
-            .map(|cap| cap[1].trim().to_string())
+            .map(|cap| {
+                tag_re
+                    .replace_all(&cap[1], "")
+                    .replace("&nbsp;", " ")
+                    .trim()
+                    .to_string()
+            })
             .unwrap_or_default();
         let status = status_re
             .captures(part)

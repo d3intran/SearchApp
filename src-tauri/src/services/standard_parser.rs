@@ -1,9 +1,16 @@
 pub fn normalize(code: &str) -> String {
     code.to_lowercase()
         .replace(' ', "")
+        .replace('/', "")
         .replace('\u{FF0D}', "-")
         .replace('\u{FF1A}', ":")
         .replace('\u{2014}', "-")
+}
+
+pub fn contains_code(input: &str) -> bool {
+    regex::Regex::new(r"[A-Za-z]+[/]?[A-Za-z]*\s*[0-9]")
+        .unwrap()
+        .is_match(input)
 }
 
 pub fn extract_code(input: &str) -> String {
