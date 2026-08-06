@@ -127,11 +127,6 @@ impl LocalFileMatcher {
             .collect()
     }
 
-    pub fn is_in_local_files(&self, std_code: &str) -> bool {
-        let norm = standard_parser::normalize(std_code);
-        self.cnas_index.contains_key(&norm) || self.cma_index.contains_key(&norm)
-    }
-
     pub fn query_cnas(&self, std_code: &str) -> MatchResult {
         query_index(&self.cnas_index, std_code, "CNAS附表")
     }
