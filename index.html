@@ -78,7 +78,7 @@
             </svg>
           </button>
         </div>
-        <div id="batchProgress" class="update-progress hidden">
+        <div id="batchProgress" class="progress-row hidden">
           <div class="progress-bar"><div id="batchProgressFill" class="progress-fill"></div></div>
           <span id="batchProgressText" class="progress-text">0%</span>
           <button id="btnBatchPause" class="btn btn-small hidden">暂停</button>
@@ -152,17 +152,69 @@
           <label class="field-label">全国标准信息平台网址</label>
           <input type="text" id="samrUrl" class="text-input" />
         </div>
-        <div class="update-row">
+        <div class="settings-status-row">
           <span id="settingsStatus" class="settings-status"></span>
-        </div>
-        <div id="updateProgress" class="update-progress hidden">
-          <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
-          <span id="progressText" class="progress-text">0%</span>
         </div>
       </div>
       <div class="modal-footer">
-        <button id="btnCheckUpdate" class="btn btn-primary">检查软件更新</button>
+        <button id="btnTutorial" class="btn btn-secondary">使用教程</button>
         <button id="btnSaveSettings" class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 使用教程弹窗 -->
+  <div id="tutorialModal" class="modal-overlay hidden">
+    <div class="modal card tutorial-modal">
+      <div class="modal-header">
+        <span class="card-title">使用教程</span>
+        <button id="btnCloseTutorial" class="modal-close" title="关闭">×</button>
+      </div>
+      <div class="tutorial-body">
+        <div class="tutorial-card">
+          <div class="tutorial-title"><span class="tutorial-num">1</span> 单条标准查询</div>
+          <div class="tutorial-desc">
+            在顶部输入框输入<strong>标准号</strong>（如 <code>GY/T 222-2006</code>、<code>GY/T222</code> 或 <code>GYT222</code>，支持省略年份/斜杠）或<strong>标准名称</strong>，点击<strong>「查询」</strong>或按回车。<br />
+            系统自动同时检索 4 大数据源：<strong>国家标准有效性</strong>（现行/废止）、<strong>CMA能力项目库</strong>、<strong>CNAS附表</strong>及<strong>CMA附表</strong>。
+          </div>
+        </div>
+
+        <div class="tutorial-card">
+          <div class="tutorial-title"><span class="tutorial-num">2</span> 附表数据导入</div>
+          <div class="tutorial-desc">
+            点击<strong>「选择文件...」</strong>导入 CNAS / CMA 附表（支持 <strong>PDF</strong> 或 <strong>Excel</strong> 格式，支持多选添加与持久化保存，下次启动自动恢复）。
+          </div>
+        </div>
+
+        <div class="tutorial-card">
+          <div class="tutorial-title"><span class="tutorial-num">3</span> 批量查询与导出</div>
+          <div class="tutorial-desc">
+            点击<strong>「选择批量文件...」</strong>导入包含标准号列表的 Excel 或 TXT 文件，点击<strong>「批量查询」</strong>进行自动化多源比对，支持随时暂停/恢复，完成后可导出详细比对结果。
+          </div>
+        </div>
+
+        <div class="tutorial-card">
+          <div class="tutorial-title"><span class="tutorial-num">4</span> 浏览已解析标准</div>
+          <div class="tutorial-desc">
+            点击标题栏右上角<strong>书本图标</strong>（📖），可按标准类别前缀（GB、JJF等）分类浏览附表中所有已提取标准，支持即时搜索与过滤；点击 PDF 来源标准可直接在浏览器中打开并<strong>精准定位到对应页码</strong>。
+          </div>
+        </div>
+
+        <div class="tutorial-card">
+          <div class="tutorial-title"><span class="tutorial-num">5</span> 结果状态颜色说明</div>
+          <div class="tutorial-badges">
+            <span class="t-badge t-green">绿色</span> 现行 / 完全匹配
+            <span class="t-badge t-yellow">黄色</span> 部分匹配（如标准号匹配但年份不同）
+            <span class="t-badge t-red">红色</span> 废止 / 未匹配
+          </div>
+        </div>
+
+        <div class="tutorial-card">
+          <div class="tutorial-title"><span class="tutorial-num">6</span> 数据源接口设置</div>
+          <div class="tutorial-desc">
+            点击标题栏右上角<strong>齿轮图标</strong>（⚙️），可自定义配置 CMA 能力项目库以及全国标准信息平台的查询接口地址。
+          </div>
+        </div>
       </div>
     </div>
   </div>

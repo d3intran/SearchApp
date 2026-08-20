@@ -26,19 +26,15 @@
 - 实时搜索过滤（标准号或名称）
 - 点击 PDF 来源的标准，在浏览器中打开 PDF 并定位到对应页码
 
-### 软件更新
-
-设置面板 → 检查软件更新：
-
-- 自动检测新版本（Cloudflare Worker + R2）
-- 下载时显示实时进度条
-- 下载完成后按钮变为"重启使用新版本"，用户确认后替换并重启
-
 ### 结果配色
 
 - 完全匹配 / 现行 → 绿色
 - 未完全匹配 → 黄色
 - 废止 / 无匹配 → 红色
+
+### 使用教程
+
+设置面板 → 点击"使用教程"即可查看各功能的操作说明与提示。
 
 ## 使用方式
 
@@ -62,7 +58,6 @@
     └── src/
         ├── lib.rs / main.rs
         ├── commands.rs             # Tauri command 层
-        ├── updater.rs              # 软件更新（检查/下载/应用）
         ├── config.rs               # 配置持久化
         ├── services/
         │   ├── standard_parser.rs  # 标准号提取与归一化
@@ -82,11 +77,10 @@
 | 框架 | Tauri 2 |
 | 后端 | Rust |
 | 前端 | 原生 HTML/CSS/JS + Vite |
-| HTTP | reqwest（stream 下载进度） |
+| HTTP | reqwest |
 | PDF 解析 | pdf 0.9（底层内容流解析） |
 | Excel 解析 | calamine 0.26 |
 | 正则 | regex |
-| 更新服务 | Cloudflare Worker + R2 |
 
 ## 构建
 

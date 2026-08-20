@@ -214,11 +214,6 @@ function openSettings() {
   $("cmaUrl").value = config.cma_url;
   $("samrUrl").value = config.samr_url;
   settingsStatus.textContent = "";
-  $("updateProgress").classList.add("hidden");
-  const btnCheck = $("btnCheckUpdate");
-  btnCheck.textContent = "检查软件更新";
-  btnCheck.disabled = false;
-  btnCheck.dataset.state = "check";
   settingsModal.classList.remove("hidden");
 }
 
@@ -233,6 +228,26 @@ settingsModal.addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !settingsModal.classList.contains("hidden")) closeSettings();
+});
+
+// ===== Tutorial modal =====
+const tutorialModal = $("tutorialModal");
+
+function openTutorial() {
+  tutorialModal.classList.remove("hidden");
+}
+
+function closeTutorial() {
+  tutorialModal.classList.add("hidden");
+}
+
+$("btnTutorial").addEventListener("click", openTutorial);
+$("btnCloseTutorial").addEventListener("click", closeTutorial);
+tutorialModal.addEventListener("click", (e) => {
+  if (e.target === tutorialModal) closeTutorial();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !tutorialModal.classList.contains("hidden")) closeTutorial();
 });
 
 $("btnOpenSamr").addEventListener("click", () => {
@@ -262,58 +277,6 @@ $("btnSaveSettings").addEventListener("click", async () => {
     settingsStatus.textContent = "已保存";
   } catch (e) {
     settingsStatus.textContent = `保存失败：${e}`;
-  }
-});
-
-$("btnCheckUpdate").addEventListener("click", async () => {
-  const btn = $("btnCheckUpdate");
-
-  if (btn.dataset.state === "restart") {
-    invoke("apply_update");
-    return;
-  }
-
-  const status = settingsStatus;
-  const progress = $("updateProgress");
-  const fill = $("progressFill");
-  const text = $("progressText");
-
-  status.textContent = "正在检查更新...";
-  progress.classList.add("hidden");
-  btn.disabled = true;
-
-  try {
-    const info = await invoke("check_update");
-    if (!info.has_update) {
-      status.textContent = info.message;
-      btn.disabled = false;
-      return;
-    }
-
-    status.textContent = info.message + "，正在下载...";
-    progress.classList.remove("hidden");
-    fill.style.width = "0%";
-    text.textContent = "0%";
-
-    const unlisten = await listen("update-progress", (event) => {
-      const p = event.payload;
-      const pct = Math.round(p.percent);
-      fill.style.width = pct + "%";
-      text.textContent = pct + "%";
-    });
-
-    await invoke("download_update", { url: info.url });
-    unlisten();
-
-    progress.classList.add("hidden");
-    status.textContent = `v${info.version} 下载完成`;
-    btn.textContent = "重启使用新版本";
-    btn.dataset.state = "restart";
-    btn.disabled = false;
-  } catch (e) {
-    progress.classList.add("hidden");
-    status.textContent = `更新失败：${e}`;
-    btn.disabled = false;
   }
 });
 

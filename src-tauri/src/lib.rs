@@ -3,7 +3,6 @@ mod commands;
 mod config;
 pub mod parsers;
 pub mod services;
-mod updater;
 
 use services::local_matcher::LocalFileMatcher;
 use std::sync::Mutex;
@@ -35,9 +34,6 @@ pub fn run() {
             commands::restore_state,
             commands::get_config,
             commands::save_config,
-            commands::check_update,
-            commands::download_update,
-            commands::apply_update,
             commands::get_all_standards,
             commands::open_pdf_at_page,
             commands::open_url,

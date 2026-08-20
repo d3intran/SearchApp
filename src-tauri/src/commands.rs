@@ -1,6 +1,6 @@
 use crate::services::{cma_api, local_matcher::{BrowseEntry, FileInfo, MatchResult}, samr_status, standard_parser};
-use crate::{config, updater, AppState};
-use tauri::{AppHandle, State};
+use crate::{config, AppState};
+use tauri::State;
 
 #[tauri::command]
 pub async fn query_validity(
@@ -91,21 +91,6 @@ pub fn get_config() -> config::AppConfig {
 pub fn save_config(cma_url: String, samr_url: String) -> Result<(), String> {
     let cfg = config::AppConfig { cma_url, samr_url };
     config::save(&cfg)
-}
-
-#[tauri::command]
-pub async fn check_update() -> updater::UpdateInfo {
-    updater::check().await
-}
-
-#[tauri::command]
-pub async fn download_update(app: AppHandle, url: String) -> Result<(), String> {
-    updater::download(&app, &url).await
-}
-
-#[tauri::command]
-pub fn apply_update() {
-    updater::apply();
 }
 
 #[tauri::command]
