@@ -101,7 +101,20 @@ pub fn get_all_standards(state: State<'_, AppState>) -> Vec<BrowseEntry> {
 
 #[tauri::command]
 pub fn open_pdf_at_page(path: String, page: u32) -> Result<(), String> {
-    let url = format!("file:///{}#page={}", path.replace('\\', "/"), page);
+    let normalized = path.replace('\\', "/");
+    let encoded_path = normalized
+        .split('/')
+        .map(|segment| {
+            // Keep drive letter (e.g. "C:") intact without %3A
+            if segment.ends_with(':') && segment.len() == 2 {
+                segment.to_string()
+            } else {
+                urlencoding::encode(segment).to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("/");
+    let url = format!("file:///{}#page={}", encoded_path, page);
     std::process::Command::new("cmd")
         .args(["/c", "start", "", &url])
         .spawn()
