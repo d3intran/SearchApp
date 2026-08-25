@@ -1,14 +1,9 @@
-use serde::Serialize;
-
+use super::http_client::HTTP_CLIENT;
 use super::standard_parser;
+use crate::error::{AppError, AppResult};
+use crate::models::QueryResult;
 
-#[derive(Serialize, Clone)]
-pub struct QueryResult {
-    pub status: String,
-    pub message: String,
-}
-
-async fn fetch_rows(param: &str, value: &str, base_url: &str) -> Result<(Vec<serde_json::Value>, u64), String> {
+async fn fetch_rows(param: &str, value: &str, base_url: &str) -> AppResult<(Vec<serde_json::Value>, u64)> {
     let clean = value.replace(' ', "");
     let encoded = urlencoding::encode(&clean);
     let url = format!(
@@ -18,19 +13,17 @@ async fn fetch_rows(param: &str, value: &str, base_url: &str) -> Result<(Vec<ser
         encoded
     );
 
-    let client = reqwest::Client::new();
-    let resp = client
+    let resp = HTTP_CLIENT
         .get(&url)
         .header("Referer", "https://cma.caqit.org.cn/")
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
         .send()
         .await
-        .map_err(|e| format!("请求失败：{}", e))?;
+        .map_err(AppError::Network)?;
 
-    let json: serde_json::Value = resp.json().await.map_err(|e| format!("解析响应失败：{}", e))?;
+    let json: serde_json::Value = resp.json().await.map_err(AppError::Network)?;
 
     if json["code"].as_i64() != Some(200) {
-        return Err("接口返回异常".to_string());
+        return Err(AppError::Custom("接口返回异常".to_string()));
     }
 
     let rows = json["rows"].as_array().cloned().unwrap_or_default();
@@ -64,30 +57,19 @@ fn more_notice(total: u64, shown: usize) -> String {
 pub async fn query_by_name(std_name: &str, base_url: &str) -> QueryResult {
     let (rows, total) = match fetch_rows("standardMethod", std_name, base_url).await {
         Ok(r) => r,
-        Err(e) => {
-            return QueryResult {
-                status: "error".into(),
-                message: e,
-            }
-        }
+        Err(e) => return QueryResult::error(e.to_string()),
     };
 
     if rows.is_empty() {
-        return QueryResult {
-            status: "nomatch".into(),
-            message: "无匹配".into(),
-        };
+        return QueryResult::nomatch("无匹配");
     }
 
-    QueryResult {
-        status: "partial".into(),
-        message: format!(
-            "按名称找到 {} 条相关标准。\n库中标准为：{}{}",
-            total,
-            row_lines(&rows).join("\n"),
-            more_notice(total, rows.len())
-        ),
-    }
+    QueryResult::partial(format!(
+        "按名称找到 {} 条相关标准。\n库中标准为：{}{}",
+        total,
+        row_lines(&rows).join("\n"),
+        more_notice(total, rows.len())
+    ))
 }
 
 /// GYT222 -> GY/T222（CMA 接口不做斜杠归一化，需补斜杠变体重试）
@@ -110,12 +92,7 @@ fn slash_variant(code: &str) -> Option<String> {
 pub async fn query(std_code: &str, base_url: &str) -> QueryResult {
     let (mut rows, mut total) = match fetch_rows("standardCode", std_code, base_url).await {
         Ok(r) => r,
-        Err(e) => {
-            return QueryResult {
-                status: "error".into(),
-                message: e,
-            }
-        }
+        Err(e) => return QueryResult::error(e.to_string()),
     };
 
     if rows.is_empty() {
@@ -128,10 +105,7 @@ pub async fn query(std_code: &str, base_url: &str) -> QueryResult {
     }
 
     if rows.is_empty() {
-        return QueryResult {
-            status: "nomatch".into(),
-            message: "无匹配".into(),
-        };
+        return QueryResult::nomatch("无匹配");
     }
 
     let target_norm = standard_parser::normalize(std_code);
@@ -146,26 +120,17 @@ pub async fn query(std_code: &str, base_url: &str) -> QueryResult {
             if !remark.is_empty() {
                 msg.push_str(&format!("\n备注：{}", remark));
             }
-            return QueryResult {
-                status: "exact".into(),
-                message: msg,
-            };
+            return QueryResult::exact(msg);
         }
     }
 
     if !rows.is_empty() {
-        return QueryResult {
-            status: "partial".into(),
-            message: format!(
-                "未完全匹配。\n库中标准为：{}{}",
-                row_lines(&rows).join("\n"),
-                more_notice(total, rows.len())
-            ),
-        };
+        return QueryResult::partial(format!(
+            "未完全匹配。\n库中标准为：{}{}",
+            row_lines(&rows).join("\n"),
+            more_notice(total, rows.len())
+        ));
     }
 
-    QueryResult {
-        status: "nomatch".into(),
-        message: "无匹配".into(),
-    }
+    QueryResult::nomatch("无匹配")
 }

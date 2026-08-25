@@ -1,9 +1,10 @@
 pub mod excel_parser;
 pub mod pdf_parser;
 
-use crate::services::local_matcher::StandardEntry;
+use crate::error::{AppError, AppResult};
+use crate::models::StandardEntry;
 
-pub fn parse_file(path: &str) -> Result<Vec<StandardEntry>, String> {
+pub fn parse_file(path: &str) -> AppResult<Vec<StandardEntry>> {
     let ext = std::path::Path::new(path)
         .extension()
         .and_then(|e| e.to_str())
@@ -13,6 +14,6 @@ pub fn parse_file(path: &str) -> Result<Vec<StandardEntry>, String> {
     match ext.as_str() {
         "xlsx" | "xls" => excel_parser::parse(path),
         "pdf" => pdf_parser::parse(path),
-        _ => Err(format!("不支持的文件格式：.{}", ext)),
+        _ => Err(AppError::UnsupportedFormat(ext)),
     }
 }

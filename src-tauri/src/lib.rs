@@ -1,16 +1,19 @@
-mod batch;
-mod commands;
-mod config;
+pub mod error;
+pub mod models;
 pub mod parsers;
 pub mod services;
 
+mod batch;
+mod commands;
+
+use models::{BatchControl, BatchInput};
 use services::local_matcher::LocalFileMatcher;
 use std::sync::Mutex;
 
 pub struct AppState {
     pub matcher: Mutex<LocalFileMatcher>,
-    pub batch_inputs: Mutex<Vec<batch::BatchInput>>,
-    pub batch_control: Mutex<batch::BatchControl>,
+    pub batch_inputs: Mutex<Vec<BatchInput>>,
+    pub batch_control: Mutex<BatchControl>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -20,7 +23,7 @@ pub fn run() {
         .manage(AppState {
             matcher: Mutex::new(LocalFileMatcher::new()),
             batch_inputs: Mutex::new(Vec::new()),
-            batch_control: Mutex::new(batch::BatchControl { paused: false }),
+            batch_control: Mutex::new(BatchControl { paused: false }),
         })
         .invoke_handler(tauri::generate_handler![
             commands::query_validity,

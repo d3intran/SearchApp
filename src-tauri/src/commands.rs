@@ -1,16 +1,18 @@
-use crate::services::{cma_api, local_matcher::{BrowseEntry, FileInfo, MatchResult}, samr_status, standard_parser};
-use crate::{config, AppState};
 use tauri::State;
+
+use crate::models::{AppConfig, BrowseEntry, FileInfo, MatchResult, QueryResult, ValidityResult};
+use crate::services::{cma_api, config_service, samr_status, standard_parser};
+use crate::AppState;
 
 #[tauri::command]
 pub async fn query_validity(
     std_code: String,
     samr_url: String,
-) -> samr_status::ValidityResult {
-    let raw = std_code.trim().to_string();
+) -> ValidityResult {
+    let raw = std_code.trim();
 
-    if !standard_parser::contains_code(&raw) {
-        return samr_status::query_by_name(&raw, &samr_url).await;
+    if !standard_parser::contains_code(raw) {
+        return samr_status::query_by_name(raw, &samr_url).await;
     }
 
     let code = standard_parser::extract_code(&std_code);
@@ -18,7 +20,7 @@ pub async fn query_validity(
 }
 
 #[tauri::command]
-pub async fn query_cma_api(std_code: String, base_url: String) -> cma_api::QueryResult {
+pub async fn query_cma_api(std_code: String, base_url: String) -> QueryResult {
     let raw = std_code.trim();
     if !standard_parser::contains_code(raw) {
         return cma_api::query_by_name(raw, &base_url).await;
@@ -30,72 +32,94 @@ pub async fn query_cma_api(std_code: String, base_url: String) -> cma_api::Query
 #[tauri::command]
 pub fn query_cnas(std_code: String, state: State<'_, AppState>) -> MatchResult {
     let raw = std_code.trim();
+    let matcher = state
+        .matcher
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     if !standard_parser::contains_code(raw) {
-        let matcher = state.matcher.lock().unwrap();
         return matcher.query_cnas_by_name(raw);
     }
     let code = standard_parser::extract_code(&std_code);
-    let matcher = state.matcher.lock().unwrap();
     matcher.query_cnas(&code)
 }
 
 #[tauri::command]
 pub fn query_cma_file(std_code: String, state: State<'_, AppState>) -> MatchResult {
     let raw = std_code.trim();
+    let matcher = state
+        .matcher
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     if !standard_parser::contains_code(raw) {
-        let matcher = state.matcher.lock().unwrap();
         return matcher.query_cma_by_name(raw);
     }
     let code = standard_parser::extract_code(&std_code);
-    let matcher = state.matcher.lock().unwrap();
     matcher.query_cma(&code)
 }
 
 #[tauri::command]
 pub fn load_cnas_file(path: String, state: State<'_, AppState>) -> Result<Vec<FileInfo>, String> {
-    let mut matcher = state.matcher.lock().unwrap();
-    matcher.add_cnas(&path)
+    let mut matcher = state
+        .matcher
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    matcher.add_cnas(&path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn load_cma_file(path: String, state: State<'_, AppState>) -> Result<Vec<FileInfo>, String> {
-    let mut matcher = state.matcher.lock().unwrap();
-    matcher.add_cma(&path)
+    let mut matcher = state
+        .matcher
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    matcher.add_cma(&path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn remove_cnas_file(index: usize, state: State<'_, AppState>) -> Vec<FileInfo> {
-    let mut matcher = state.matcher.lock().unwrap();
+    let mut matcher = state
+        .matcher
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     matcher.remove_cnas(index)
 }
 
 #[tauri::command]
 pub fn remove_cma_file(index: usize, state: State<'_, AppState>) -> Vec<FileInfo> {
-    let mut matcher = state.matcher.lock().unwrap();
+    let mut matcher = state
+        .matcher
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     matcher.remove_cma(index)
 }
 
 #[tauri::command]
 pub fn restore_state(state: State<'_, AppState>) -> (Vec<FileInfo>, Vec<FileInfo>) {
-    let mut matcher = state.matcher.lock().unwrap();
+    let mut matcher = state
+        .matcher
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     matcher.restore_state();
     (matcher.cnas_infos(), matcher.cma_infos())
 }
 
 #[tauri::command]
-pub fn get_config() -> config::AppConfig {
-    config::load()
+pub fn get_config() -> AppConfig {
+    config_service::load()
 }
 
 #[tauri::command]
 pub fn save_config(cma_url: String, samr_url: String) -> Result<(), String> {
-    let cfg = config::AppConfig { cma_url, samr_url };
-    config::save(&cfg)
+    let cfg = AppConfig { cma_url, samr_url };
+    config_service::save(&cfg).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn get_all_standards(state: State<'_, AppState>) -> Vec<BrowseEntry> {
-    let matcher = state.matcher.lock().unwrap();
+    let matcher = state
+        .matcher
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     matcher.get_all_entries()
 }
 
@@ -118,7 +142,7 @@ pub fn open_pdf_at_page(path: String, page: u32) -> Result<(), String> {
     std::process::Command::new("cmd")
         .args(["/c", "start", "", &url])
         .spawn()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("打开PDF页面失败: {}", e))?;
     Ok(())
 }
 
@@ -127,6 +151,6 @@ pub fn open_url(url: String) -> Result<(), String> {
     std::process::Command::new("cmd")
         .args(["/c", "start", "", &url])
         .spawn()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("打开链接失败: {}", e))?;
     Ok(())
 }

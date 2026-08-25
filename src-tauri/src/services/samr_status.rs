@@ -1,19 +1,21 @@
 use regex::Regex;
-use serde::Serialize;
+use std::sync::LazyLock;
 
+use super::http_client::HTTP_CLIENT;
 use super::standard_parser;
+use crate::error::{AppError, AppResult};
+use crate::models::{ValidityLine, ValidityResult};
 
-#[derive(Serialize, Clone)]
-pub struct ValidityLine {
-    pub text: String,
-    pub color: String,
-}
-
-#[derive(Serialize, Clone)]
-pub struct ValidityResult {
-    pub found: bool,
-    pub lines: Vec<ValidityLine>,
-}
+static TOTAL_PAGES_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"totalPages:(\d+)").unwrap());
+static CODE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"<span class="en-code">([\s\S]*?)</span>"#).unwrap());
+static NAME_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"<span class="en-code">[\s\S]*?</span>([\s\S]*?)</a>"#).unwrap());
+static STATUS_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"<span class="s-status label label-[^"\s]+">([^<]+)</span>"#).unwrap()
+});
+static TAG_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").unwrap());
 
 struct ParsedCard {
     code: String,
@@ -21,7 +23,7 @@ struct ParsedCard {
     status: String,
 }
 
-async fn fetch_cards(query: &str, base_url: &str) -> Result<(Vec<ParsedCard>, u32), String> {
+async fn fetch_cards(query: &str, base_url: &str) -> AppResult<(Vec<ParsedCard>, u32)> {
     let clean_query = query.replace(' ', "");
     let encoded = urlencoding::encode(&clean_query);
     let url = format!(
@@ -30,18 +32,18 @@ async fn fetch_cards(query: &str, base_url: &str) -> Result<(Vec<ParsedCard>, u3
         encoded
     );
 
-    let client = reqwest::Client::new();
-    let resp = client
+    let resp = HTTP_CLIENT
         .get(&url)
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        .header(
+            "Accept",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        )
         .send()
         .await
-        .map_err(|e| format!("请求失败：{}", e))?;
+        .map_err(AppError::Network)?;
 
-    let html = resp.text().await.map_err(|e| format!("读取响应失败：{}", e))?;
-    let total_pages = Regex::new(r"totalPages:(\d+)")
-        .unwrap()
+    let html = resp.text().await.map_err(AppError::Network)?;
+    let total_pages = TOTAL_PAGES_RE
         .captures(&html)
         .and_then(|cap| cap[1].parse().ok())
         .unwrap_or(1);
@@ -51,7 +53,7 @@ async fn fetch_cards(query: &str, base_url: &str) -> Result<(Vec<ParsedCard>, u3
 pub async fn query_by_name(std_name: &str, base_url: &str) -> ValidityResult {
     let (cards, total_pages) = match fetch_cards(std_name, base_url).await {
         Ok(c) => c,
-        Err(e) => return error_result(&e),
+        Err(e) => return error_result(&e.to_string()),
     };
 
     if cards.is_empty() {
@@ -94,7 +96,7 @@ pub async fn query_by_name(std_name: &str, base_url: &str) -> ValidityResult {
 pub async fn query(std_code: &str, base_url: &str) -> ValidityResult {
     let (cards, total_pages) = match fetch_cards(std_code, base_url).await {
         Ok(c) => c,
-        Err(e) => return error_result(&e),
+        Err(e) => return error_result(&e.to_string()),
     };
 
     if cards.is_empty() {
@@ -129,7 +131,11 @@ pub async fn query(std_code: &str, base_url: &str) -> ValidityResult {
             color: "yellow".into(),
         }];
         for c in &prefix {
-            let color = if c.status.contains("废止") { "red" } else { "green" };
+            let color = if c.status.contains("废止") {
+                "red"
+            } else {
+                "green"
+            };
             lines.push(ValidityLine {
                 text: format!("· {} {}（{}）", c.code, c.name, c.status),
                 color: color.into(),
@@ -181,7 +187,7 @@ fn build_exact_result(matched: &ParsedCard, all_cards: &[ParsedCard]) -> Validit
     if matched.status.contains("废止") || matched.status.contains("作废") {
         let base = get_base_code(&standard_parser::normalize(&matched.code));
         let replacement = all_cards.iter().find(|c| {
-            std::ptr::eq(*c, matched) == false
+            !std::ptr::eq(*c, matched)
                 && get_base_code(&standard_parser::normalize(&c.code)) == base
                 && c.status.contains("现行")
         });
@@ -214,27 +220,23 @@ fn parse_cards(html: &str) -> Vec<ParsedCard> {
     let mut cards = Vec::new();
     let parts: Vec<&str> = html.split("<div class=\"panel panel-default post\">").collect();
 
-    let code_re = Regex::new(r#"<span class="en-code">([\s\S]*?)</span>"#).unwrap();
-    let name_re = Regex::new(r#"<span class="en-code">[\s\S]*?</span>([\s\S]*?)</a>"#).unwrap();
-    let status_re = Regex::new(r#"<span class="s-status label label-[^"\s]+">([^<]+)</span>"#).unwrap();
-    let tag_re = Regex::new(r"<[^>]+>").unwrap();
-
     for part in parts.iter().skip(1) {
-        let code = match code_re.captures(part) {
-            Some(cap) => tag_re.replace_all(&cap[1], "").trim().to_string(),
-            None => continue,
+        let Some(code_cap) = CODE_RE.captures(part) else {
+            continue;
         };
-        let name = name_re
+        let code = TAG_RE.replace_all(&code_cap[1], "").trim().to_string();
+
+        let name = NAME_RE
             .captures(part)
             .map(|cap| {
-                tag_re
+                TAG_RE
                     .replace_all(&cap[1], "")
                     .replace("&nbsp;", " ")
                     .trim()
                     .to_string()
             })
             .unwrap_or_default();
-        let status = status_re
+        let status = STATUS_RE
             .captures(part)
             .map(|cap| cap[1].trim().to_string())
             .unwrap_or_else(|| "未知".to_string());
