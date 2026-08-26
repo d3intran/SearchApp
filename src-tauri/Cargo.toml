@@ -21,6 +21,8 @@ urlencoding = "2"
 rust_xlsxwriter = "0.97.0"
 rand = "0.10.2"
 thiserror = "2"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+quick-xml = "0.37"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

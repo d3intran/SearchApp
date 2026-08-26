@@ -1,3 +1,4 @@
+pub mod docx_parser;
 pub mod excel_parser;
 pub mod pdf_parser;
 
@@ -14,6 +15,7 @@ pub fn parse_file(path: &str) -> AppResult<Vec<StandardEntry>> {
     match ext.as_str() {
         "xlsx" | "xls" => excel_parser::parse(path),
         "pdf" => pdf_parser::parse(path),
+        "docx" | "doc" => docx_parser::parse(path),
         _ => Err(AppError::UnsupportedFormat(ext)),
     }
 }

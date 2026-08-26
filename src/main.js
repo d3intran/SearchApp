@@ -181,7 +181,7 @@ function renderFileList(listEl, files, kind) {
 async function loadFiles(kind) {
   const paths = await open({
     multiple: true,
-    filters: [{ name: "附表文件", extensions: ["pdf", "xlsx", "xls"] }],
+    filters: [{ name: "附表文件", extensions: ["pdf", "xlsx", "xls", "docx", "doc"] }],
   });
   if (!paths) return;
 

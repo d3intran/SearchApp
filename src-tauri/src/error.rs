@@ -21,6 +21,15 @@ pub enum AppError {
     #[error("Excel 写入失败: {0}")]
     Xlsx(#[from] rust_xlsxwriter::XlsxError),
 
+    #[error("Word 解压失败: {0}")]
+    Zip(#[from] zip::result::ZipError),
+
+    #[error("Word 解析失败: {0}")]
+    Word(String),
+
+    #[error("XML 解析失败: {0}")]
+    Xml(#[from] quick_xml::Error),
+
     #[error("不支持的文件格式: .{0}")]
     UnsupportedFormat(String),
 
